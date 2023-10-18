@@ -350,7 +350,7 @@ class MRIBLANKSEQ:
         self.mapVals['dataOver'] = dataOver
 
         # Decimate the signal after 'fir' filter
-        dataFull = sig.decimate(dataOver[int((hw.cicDelayPoints-1)/2)::], hw.oversamplingFactor, ftype='fir', zero_phase=True)
+        dataFull = sig.decimate(dataOver[int((hw.oversamplingFactor-1)/2)::], hw.oversamplingFactor, ftype='fir', zero_phase=True)
 
         # Remove addRdPoints
         nPoints = int(dataFull.shape[0]/nRdLines)-2*hw.addRdPoints

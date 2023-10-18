@@ -140,9 +140,9 @@ class PETRA(blankSeq.MRIBLANKSEQ):
             gradientAmplitudes[1] = 0
         if axesEnable[2] == 0:
             gradientAmplitudes[2] = 0
+        self.mapVals['gradientAmplitudes'] = gradientAmplitudes
 
-
-        nPPL = np.int(np.ceil((1.73205 * acqTime - deadTime - 0.5 * rfExTime) * BW * 1e6 + 1))
+        nPPL = np.int(np.ceil((1* acqTime - deadTime - 0.5 * rfExTime) * BW * 1e6 + 1))
         nLPC = np.int(np.ceil(max(nPoints[0], nPoints[1]) * np.pi / undersampling))
         nLPC = max(nLPC - (nLPC % 2), 1)
         nCir = max(np.int(np.ceil(nPoints[2] * np.pi / 2 / undersampling) + 1), 1)
@@ -285,17 +285,24 @@ class PETRA(blankSeq.MRIBLANKSEQ):
 
         gSeq = - np.concatenate((gradientVectors1, gradientVectors2), axis=0)
         gSeqDif = np.diff(gSeq, n=1, axis=0)
-        MaxGradTransitions = kMax / (hw.gammaB * acqTime)
-        MaxGradTransitions[0] = max(gSeqDif[:, 0])
-        MaxGradTransitions[1] = max(gSeqDif[:, 1])
-        MaxGradTransitions[2] = max(gSeqDif[:, 2])
+        MaxGradTransitionsRadial = kMax * 0
+        MaxGradTransitionsRadial[0] = max(gSeqDif[0:gradientVectors1.shape[0]-1, 0])
+        MaxGradTransitionsRadial[1] = max(gSeqDif[0:gradientVectors1.shape[0]-1, 1])
+        MaxGradTransitionsRadial[2] = max(gSeqDif[0:gradientVectors1.shape[0]-1, 2])
 
-        print(gradientVectors1.shape[0], " radial lines and ", gradientVectors2.shape[0], " pointwise")
+        gSeqDif = np.diff(gSeq, n=1, axis=0)
+        MaxGradTransitionsSP = kMax * 0
+        MaxGradTransitionsSP[0] = max(gSeqDif[gradientVectors1.shape[0]:gSeqDif.shape[0], 0])
+        MaxGradTransitionsSP[1] = max(gSeqDif[gradientVectors1.shape[0]:gSeqDif.shape[0], 1])
+        MaxGradTransitionsSP[2] = max(gSeqDif[gradientVectors1.shape[0]:gSeqDif.shape[0], 2])
+
+        print(gradientVectors1.shape[0], " radios, ", nPPL*gradientVectors1.shape[0]  ," radial points  and ", gradientVectors2.shape[0], " single points")
         print("Radial max gradient strengths are  ", gradientAmplitudes * 1e3, " mT/m")
         print("Pointwise max gradient strengths are  ", MaxSPGradTransitions * 1e3, " mT/m")
-        print("Max grad transitions are  ", MaxGradTransitions * 1e3, " mT/m")
+        print("Max grad transitions are  ", MaxGradTransitionsRadial * 1e3, " mT/m in radial and ", MaxGradTransitionsSP * 1e3, " mT/m in pointwise."    )
 
         self.mapVals['SequenceGradients'] = gSeq
+        self.mapVals['nSPReadouts'] = gradientVectors2.shape[0]
 
         def createSequence():
             nRep = gSeq.shape[0]
@@ -368,9 +375,21 @@ class PETRA(blankSeq.MRIBLANKSEQ):
             samplingPeriod = self.expt.getSamplingRate()
             BWreal = 1 / samplingPeriod
             acqTimeSeq = nPPL / BWreal  # us
-            self.mapVals['BW-real'] = BWreal
-            self.mapVals['acqTimeSeq'] = acqTimeSeq
+            self.mapVals['BWSeq'] = BWreal*1e6 # Hz
+            self.mapVals['acqTimeSeq'] = acqTimeSeq*1e-6 # s
             createSequence()
+
+            tRadio=np.linspace(deadTime+0.5/(self.mapVals['BWSeq']), deadTime+0.5/(self.mapVals['BWSeq']) +self.mapVals['acqTimeSeq'] ,nPPL   )
+            tVectorRadial2=[]
+            for pp in range(0,self.mapVals['nRadialReadouts'] ):
+                tVectorRadial2=np.concatenate((tVectorRadial2, tRadio), axis=0)
+            self.mapVals['tVectorRadial2']=tVectorRadial2
+
+            tPoint=np.linspace(deadTime+0.5/(self.mapVals['BWSeq']),deadTime+0.5/(self.mapVals['BWSeq']),1)
+            tVectorSP=[]
+            for pp in range(0,self.mapVals['nSPReadouts']):
+                tVectorSP=np.concatenate((tVectorSP, tPoint), axis=0)
+            self.mapVals['tVectorSP']=tVectorSP
 
             if plotSeq == 0:
                 # Warnings before run sequence
@@ -387,11 +406,11 @@ class PETRA(blankSeq.MRIBLANKSEQ):
                 for ii in range(nScans):
                     rxd, msgs = self.expt.run()
                     rxd['rx0'] = rxd['rx0']  # mV
-                    print(ii, "/", nScans, "PETRA sequence finished")
                     # Get data
                     overData = np.concatenate((overData, rxd['rx0']), axis=0)
 
                 # Decimate the result
+                print("Points measured: ", overData.shape[0])
                 overData = np.reshape(overData, (nScans, -1))
                 radPoints = gradientVectors1.shape[0]*(nPPL+2*hw.addRdPoints)*hw.oversamplingFactor
                 carPoints = gradientVectors2.shape[0]*(1+2*hw.addRdPoints)*hw.oversamplingFactor

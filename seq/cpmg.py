@@ -139,53 +139,53 @@ class CPMG(blankSeq.MRIBLANKSEQ):
         nPoints = self.mapVals['nPoints']
         echo1Amp = self.mapVals['data'][int(nPoints/2)]
         self.mapVals['sampledPoint'] = echo1Amp  # Save point here to sweep class
-
-        # Functions for fitting
-        def func1(x, m, t2):
-            return m*np.exp(-x/t2)
-
-        def func2(x, ma, t2a, mb, t2b):
-            return ma*np.exp(-x/t2a)+mb*np.exp(-x/t2b)
-
-        def func3(x, ma, t2a, mb, t2b, mc, t2c):
-            return ma*np.exp(-x/t2a)+mb*np.exp(-x/t2b)+mc*np.exp(-x/t2c)
-
-        # Fitting to functions
-        # For 1 component
-        fitData1, xxx = curve_fit(func1, results[0],  results[1])
-        print('For one component:')
-        print('mA', round(fitData1[0], 1))
-        print('T2', round(fitData1[1]), ' ms')
-        self.mapVals['T21'] = fitData1[1]
-        self.mapVals['M1'] = fitData1[0]
-
-        # For 2 components
-        fitData2, xxx = curve_fit(func2, results[0],  results[1])
-        print('For two components:')
-        print('Ma', round(fitData2[0], 1))
-        print('Mb', round(fitData2[2], 1))
-        print('T2a', round(fitData2[1]), ' ms')
-        print('T2b', round(fitData2[3]), ' ms')
-        self.mapVals['T22'] = [fitData2[1], fitData2[3]]
-        self.mapVals['M2'] = [fitData2[0], fitData2[2]]
-
-        # For 3 components
-        fitData3, xxx = curve_fit(func3, results[0],  results[1])
-        print('For three components:')
-        print('Ma', round(fitData3[0], 1), ' ms')
-        print('Mb', round(fitData3[2], 1), ' ms')
-        print('Mc', round(fitData3[4], 1), ' ms')
-        print('T2a', round(fitData3[1]), ' ms')
-        print('T2b', round(fitData3[3]), ' ms')
-        print('T2c', round(fitData3[5]), ' ms')
-        self.mapVals['T23'] = [fitData3[1], fitData3[3], fitData3[5]]
-        self.mapVals['M3'] = [fitData3[0], fitData3[2], fitData3[4]]
+        #
+        # # Functions for fitting
+        # def func1(x, m, t2):
+        #     return m*np.exp(-x/t2)
+        #
+        # def func2(x, ma, t2a, mb, t2b):
+        #     return ma*np.exp(-x/t2a)+mb*np.exp(-x/t2b)
+        #
+        # def func3(x, ma, t2a, mb, t2b, mc, t2c):
+        #     return ma*np.exp(-x/t2a)+mb*np.exp(-x/t2b)+mc*np.exp(-x/t2c)
+        #
+        # # Fitting to functions
+        # # For 1 component
+        # fitData1, xxx = curve_fit(func1, results[0],  results[1])
+        # print('For one component:')
+        # print('mA', round(fitData1[0], 1))
+        # print('T2', round(fitData1[1]), ' ms')
+        # self.mapVals['T21'] = fitData1[1]
+        # self.mapVals['M1'] = fitData1[0]
+        #
+        # # For 2 components
+        # fitData2, xxx = curve_fit(func2, results[0],  results[1])
+        # print('For two components:')
+        # print('Ma', round(fitData2[0], 1))
+        # print('Mb', round(fitData2[2], 1))
+        # print('T2a', round(fitData2[1]), ' ms')
+        # print('T2b', round(fitData2[3]), ' ms')
+        # self.mapVals['T22'] = [fitData2[1], fitData2[3]]
+        # self.mapVals['M2'] = [fitData2[0], fitData2[2]]
+        #
+        # # For 3 components
+        # fitData3, xxx = curve_fit(func3, results[0],  results[1])
+        # print('For three components:')
+        # print('Ma', round(fitData3[0], 1), ' ms')
+        # print('Mb', round(fitData3[2], 1), ' ms')
+        # print('Mc', round(fitData3[4], 1), ' ms')
+        # print('T2a', round(fitData3[1]), ' ms')
+        # print('T2b', round(fitData3[3]), ' ms')
+        # print('T2c', round(fitData3[5]), ' ms')
+        # self.mapVals['T23'] = [fitData3[1], fitData3[3], fitData3[5]]
+        # self.mapVals['M3'] = [fitData3[0], fitData3[2], fitData3[4]]
 
         self.saveRawData()
 
         # Signal vs rf time
         plotWidget = SpectrumPlot(xData=results[0]*1e-3,
-                                  yData=[results[1], func1(results[0], *fitData1), func2(results[0], *fitData2)],
+                                  yData=[results[1]],
                                   legend=['Experimental', 'Fitting 1 component', 'Fitting 2 components'],
                                   xLabel='Echo time (ms)',
                                   yLabel='Echo amplitude (mV)',

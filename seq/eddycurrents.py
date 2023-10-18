@@ -382,8 +382,7 @@ class EDDYCURRENTS(blankSeq.MRIBLANKSEQ):
         # Add frequency spectrum to the layout
         spectrumPlotWidget = SpectrumPlot(xData=FreqVector,
                                         yData=[np.abs(spectrum0), np.abs(spectrumup), np.abs(spectrumdown)],
-                                        legend=['G=0', 'G-', 'G+'],
-                                        xLabel='Frequency (kHz)',
+                                        legend=["Delay G-RF = {} ms".format(delayGtoRF_0), "Delay G-RF = {} ms".format(delayGtoRF_M), "Delay G-RF = {} ms".format(delayGtoRF_F)],xLabel='Frequency (kHz)',
                                         yLabel='Signal amplitude (mV)',
                                         title='Signal vs freq')
         return([signalPlotWidget, spectrumPlotWidget])

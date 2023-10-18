@@ -142,9 +142,9 @@ class FIDandNoise(blankSeq.MRIBLANKSEQ):
 
         noise = np.abs(self.dataTime[1])
         noiserms = np.sqrt(2) * np.std(noise.real)*1e3 #uV
-        johnson = np.sqrt(2 * 50 * hw.temperature * bw * 1.38e-23) * 10 ** (hw.lnaGain / 20) * 1e6  # uV
+        johnson = np.sqrt(2 * 50 * hw.temperature * bw*1000 * 1.38e-23) * 10 ** (hw.lnaGain / 20) * 1e6  # uV
         self.mapVals['RMS noise'] = noiserms
-        self.mapVals['sampledPoint'] = noiserms  # for sweep method
+        self.mapVals['sampledPoint'] = nPoints  # for sweep method
         print('rms noise: %0.5f uV' % noiserms)
         print('Expected by Johnson: %0.5f uV' % johnson)
         self.saveRawData()
