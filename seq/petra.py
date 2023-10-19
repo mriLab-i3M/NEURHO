@@ -142,10 +142,10 @@ class PETRA(blankSeq.MRIBLANKSEQ):
             gradientAmplitudes[2] = 0
         self.mapVals['gradientAmplitudes'] = gradientAmplitudes
 
-        nPPL = np.int(np.ceil((1* acqTime - deadTime - 0.5 * rfExTime) * BW * 1e6 + 1))
-        nLPC = np.int(np.ceil(max(nPoints[0], nPoints[1]) * np.pi / undersampling))
+        nPPL = int(np.ceil((1* acqTime - deadTime - 0.5 * rfExTime) * BW * 1e6 + 1))
+        nLPC = int(np.ceil(max(nPoints[0], nPoints[1]) * np.pi / undersampling))
         nLPC = max(nLPC - (nLPC % 2), 1)
-        nCir = max(np.int(np.ceil(nPoints[2] * np.pi / 2 / undersampling) + 1), 1)
+        nCir = max(int(np.ceil(nPoints[2] * np.pi / 2 / undersampling) + 1), 1)
 
         if axesEnable[0] == 0 or axesEnable[1] == 0 or axesEnable[2] == 0:
             nCir = 1
@@ -170,7 +170,7 @@ class PETRA(blankSeq.MRIBLANKSEQ):
             theta = np.linspace(0, np.pi, nCir)
 
         for jj in range(nCir):
-            nRepetitions = nRepetitions + max(np.int(np.ceil(nLPC * np.sin(theta[jj]))), 1)
+            nRepetitions = nRepetitions + max(int(np.ceil(nLPC * np.sin(theta[jj]))), 1)
         self.mapVals['nRadialReadouts'] = nRepetitions
         self.mapVals['theta'] = theta
 
@@ -186,7 +186,7 @@ class PETRA(blankSeq.MRIBLANKSEQ):
 
         # Calculate the normalized gradients:
         for jj in range(nCir):
-            nLPCjj = max(np.int(np.ceil(nLPC * np.sin(theta[jj]))), 1)
+            nLPCjj = max(int(np.ceil(nLPC * np.sin(theta[jj]))), 1)
             deltaPhi = 2 * np.pi / nLPCjj
             phi = np.linspace(0, 2 * np.pi - deltaPhi, nLPCjj)
 
