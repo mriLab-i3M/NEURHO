@@ -9,6 +9,8 @@ import imageio.v2 as imageio
 from controller.controller_plot3d import Plot3DController as Spectrum3DPlot
 from widgets.widget_figures import FiguresLayoutWidget
 
+import itk
+import numpy as np
 
 class FiguresLayoutController(FiguresLayoutWidget):
     """
@@ -58,6 +60,68 @@ class FiguresLayoutController(FiguresLayoutWidget):
         welcome.showHistogram(False)
         welcome.ui.menuBtn.hide()
         welcome.ui.roiBtn.hide()
+        self.addWidget(welcome)
+
+    def clearFiguresLayout(self) -> None:
+        """
+        Clear the figures layout.
+
+        This method removes all widgets from the figures layout.
+
+        Returns:
+            None
+        """
+        for ii in range(self.layout.count()):
+            item = self.layout.takeAt(0)
+            item.widget().deleteLater()
+
+
+class PositioningFiguresLayoutController(FiguresLayoutWidget):
+    """
+    Controller for figures layout of positioning tab
+    """
+    def __init__(self, main=None):
+        super().__init__()
+        self.main = main
+
+        # Show the initial plot
+        self.firstPlot()
+
+        # Show the wellcome message
+        self.wellcomeMessage()
+
+    @staticmethod
+    def wellcomeMessage():
+        """
+        Display the welcome message.
+
+        This static method displays the welcome message for the Graphical User Interface for MaRCoS. It prints information about the developer, contact details, and the GitHub repository URL.
+
+        Note:
+            The method does not return any value.
+        """
+        print("Graphical User Interface for MaRCoS")
+        print("J.M. Algarín, PhD")
+        print("josalggui@i3m.upv.es")
+        print("mriLab @ i3M, CSIC, Valencia, Spain")
+        print("https://github.com/mriLab-i3M/MaRGE\n")
+
+    def firstPlot(self):
+        """
+        Display the first plot.
+
+        This method displays the first plot by loading an image, creating a Spectrum3DPlot object, and customizing its appearance. The plot is added to the figures layout.
+
+        Note:
+            The method does not return any value.
+        """
+        try:
+            logo = np.array(itk.imread("../temporal/noisy_and_truncated_MR.nii.gz", itk.F))
+        except:
+            logo = np.array(itk.imread("temporal/noisy_and_truncated_MR.nii.gz", itk.F))
+        self.clearFiguresLayout()
+        welcome = Spectrum3DPlot(main=self, data=logo.transpose([2, 0, 1]),
+                                 title='Institute for Instrumentation in Molecular Imaging (i3M)')
         self.addWidget(welcome)
 
     def clearFiguresLayout(self) -> None:

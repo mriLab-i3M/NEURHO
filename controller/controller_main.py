@@ -26,6 +26,9 @@ class MainController(MainWindow):
         thread = threading.Thread(target=self.history_list.waitingForRun)
         thread.start()
 
+    def fix_console(self):
+        self.layout_inputs.addWidget(self.console)
+
     def mousePressEvent(self, event):
         # Send self.main.post_gui.console.setup_console()prints to current window console
         self.console.setup_console()

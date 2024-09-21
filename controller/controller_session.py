@@ -4,11 +4,15 @@
 :affiliation: MRILab, i3M, CSIC, Valencia, Spain
 
 """
+from PyQt5.QtWidgets import QApplication
+
 from ui.window_session import SessionWindow
 from controller.controller_main import MainController
 import os
 import sys
 import configs.hw_config as hw
+
+from ui.window_workflow import WorkflowWindow
 
 
 class SessionController(SessionWindow):
@@ -45,9 +49,10 @@ class SessionController(SessionWindow):
             os.makedirs(self.session['directory'])
 
         # Open the main gui
-        self.main_gui = MainController(self.session, demo=False)
+        self.main_gui = WorkflowWindow(session=self.session, demo=False)
         self.hide()
         self.main_gui.show()
+        sys.exit(app.exec_())
 
     def runDemoGui(self):
         """
@@ -64,7 +69,7 @@ class SessionController(SessionWindow):
             os.makedirs(self.session['directory'])
 
         # Open the main gui
-        self.main_gui = MainController(self.session, demo=True)
+        self.main_gui = WorkflowWindow(session=self.session, demo=True)
         self.hide()
         self.main_gui.show()
 
@@ -106,3 +111,10 @@ class SessionController(SessionWindow):
             'seriesNumber': 0,
         }
         hw.b1Efficiency = hw.antenna_dict[self.session['rf_coil']]
+
+if __name__ == '__main__':
+    # Only one QApplication for event loop
+    app = QApplication(sys.argv)
+    window = SessionController()
+    window.show()
+    sys.exit(app.exec_())

@@ -23,7 +23,7 @@ from widgets.widget_custom_and_protocol import CustomAndProtocolWidget
 from ui.window_postprocessing import MainWindow as PostWindow
 
 
-class MainWindow(QMainWindow):
+class MainWindow(QWidget):
     def __init__(self, session, demo=False, parent=None):
         super(MainWindow, self).__init__(parent)
         self.app_open = True
@@ -33,7 +33,6 @@ class MainWindow(QMainWindow):
         self.demo = demo
         self.setWindowTitle(session['directory'])
         self.setGeometry(20, 40, 1680, 720)
-        # self.resize(QSize(1680, 720))
 
         # Threadpool for parallel running
         self.threadpool = QThreadPool()
@@ -45,49 +44,47 @@ class MainWindow(QMainWindow):
         # Create console
         self.console = ConsoleController()
         self.console.setup_console()
+        self.console.setup_console()
+
+        # Layouts
+        layout_main = QVBoxLayout()
+        layout_toolbars = QHBoxLayout()
+        layout_widgets = QHBoxLayout()
+        self.layout_inputs = QVBoxLayout()
+        layout_outputs = QVBoxLayout()
+        layout_outputs_h = QHBoxLayout()
+        self.setLayout(layout_main)
+        layout_main.addLayout(layout_toolbars)
+        layout_main.addLayout(layout_widgets)
+        layout_widgets.addLayout(self.layout_inputs)
+        layout_widgets.addLayout(layout_outputs)
+
+        ############## toolbars ###################
 
         # Add marcos toolbar
         self.toolbar_marcos = MarcosController(self, "MaRCoS toolbar")
-        self.addToolBar(self.toolbar_marcos)
+        layout_toolbars.addWidget(self.toolbar_marcos)
 
         # Add sequence toolbar
         self.toolbar_sequences = SequenceController(self, "Sequence toolbar")
-        self.addToolBar(self.toolbar_sequences)
+        layout_toolbars.addWidget(self.toolbar_sequences)
 
         # Add image toolbar
         self.toolbar_figures = FiguresController(self, "Figures toolbar")
-        self.addToolBar(self.toolbar_figures)
+        layout_toolbars.addWidget(self.toolbar_figures)
 
         # Add protocol toolbar
         self.toolbar_protocols = ProtocolsController(self, "Protocols toolbar")
-        self.addToolBar(self.toolbar_protocols)
+        layout_toolbars.addWidget(self.toolbar_protocols)
 
-        # Add Scanner menu
-        self.menu = self.menuBar()
-        MenuController(main=self)
+        # # Status bar
+        # self.setStatusBar(QStatusBar(self))
 
-        # Status bar
-        self.setStatusBar(QStatusBar(self))
-
-        # Create central widget that will contain the layout
-        self.main_widget = QWidget()
-        self.setCentralWidget(self.main_widget)
-
-        # Add main layout to input other layouts
-        self.main_layout = QHBoxLayout()
-        self.main_widget.setLayout(self.main_layout)
-
-        # Layout for sequences and console
-        self.input_layout = QVBoxLayout()
-        self.main_layout.addLayout(self.input_layout)
-
-        # Layout for outputs
-        self.output_layout = QVBoxLayout()
-        self.main_layout.addLayout(self.output_layout)
+        ################# layout_qwidget #####################
 
         # Add custom_and_protocol widget
         self.custom_and_protocol = CustomAndProtocolWidget()
-        self.input_layout.addWidget(self.custom_and_protocol)
+        self.layout_inputs.addWidget(self.custom_and_protocol)
 
         # Add sequence list to custom tab
         self.sequence_list = SequenceListController(parent=self)
@@ -105,21 +102,18 @@ class MainWindow(QMainWindow):
         self.protocol_inputs = ProtocolInputsController(main=self)
         self.custom_and_protocol.protocol_layout.addWidget(self.protocol_inputs)
 
-        # Add console
-        self.input_layout.addWidget(self.console)
-
         # Add layout to show the figures
         self.figures_layout = FiguresLayoutController(self)
         self.figures_layout.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.output_layout.addWidget(self.figures_layout)
+        layout_outputs.addWidget(self.figures_layout)
 
-        # Layout for output history
-        self.output_layout_h = QHBoxLayout()
-        self.output_layout.addLayout(self.output_layout_h)
+        # Add console
+        self.layout_inputs.addWidget(self.console)
 
         # Add list to show the history
+        layout_outputs.addLayout(layout_outputs_h)
         self.history_list = HistoryListController(parent=self)
-        self.output_layout_h.addWidget(self.history_list)
+        layout_outputs_h.addWidget(self.history_list)
         self.history_list.setMaximumHeight(200)
         self.history_list.setMinimumHeight(200)
 
@@ -127,10 +121,4 @@ class MainWindow(QMainWindow):
         self.input_table = QTableWidget()
         self.input_table.setMaximumHeight(200)
         self.input_table.setMinimumHeight(200)
-        self.output_layout_h.addWidget(self.input_table)
-
-        # Create the post-processing toolbox
-        self.post_gui = PostWindow(self.session)
-
-        # Send prints to current window console
-        self.console.setup_console()
+        layout_outputs_h.addWidget(self.input_table)
