@@ -12,7 +12,7 @@ import os
 import sys
 import configs.hw_config as hw
 
-from ui.window_workflow import WorkflowWindow
+from controller.controller_workflow import WorkflowController
 
 
 class SessionController(SessionWindow):
@@ -49,7 +49,7 @@ class SessionController(SessionWindow):
             os.makedirs(self.session['directory'])
 
         # Open the main gui
-        self.main_gui = WorkflowWindow(session=self.session, demo=False)
+        self.main_gui = WorkflowController(session=self.session, demo=False)
         self.hide()
         self.main_gui.show()
         sys.exit(app.exec_())
@@ -69,7 +69,7 @@ class SessionController(SessionWindow):
             os.makedirs(self.session['directory'])
 
         # Open the main gui
-        self.main_gui = WorkflowWindow(session=self.session, demo=True)
+        self.main_gui = WorkflowController(session=self.session, demo=True)
         self.hide()
         self.main_gui.show()
 

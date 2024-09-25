@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QMainWindow, QStatusBar, QWidget, QHBoxLayout, QVBox
 from PyQt5.QtCore import QSize, QThreadPool
 import qdarkstyle
 from controller.controller_figures import PositioningFiguresLayoutController
-
+from positioning.widget_manual_control import WidgetManualControl
 
 
 class PositioningWindow(QWidget):
@@ -29,6 +29,8 @@ class PositioningWindow(QWidget):
         layout_toolbars = QHBoxLayout()
         self.layout_widgets = QGridLayout()
         self.setLayout(layout_main)
+        self.layout_left = QVBoxLayout()
+        self.layout_widgets.addLayout(self.layout_left, 0, 0)
         layout_main.addLayout(layout_toolbars)
         layout_main.addLayout(self.layout_widgets)
 
@@ -38,6 +40,11 @@ class PositioningWindow(QWidget):
 
         ################# layout_qwidget #####################
 
+        # Add manual control widget
+        manual_control_widget = WidgetManualControl(main=self)
+        self.layout_left.addWidget(manual_control_widget)
+
+        # Add figure display area
         self.figures_layout = PositioningFiguresLayoutController(main=self)
         self.layout_widgets.addWidget(self.figures_layout, 0, 1)
 
