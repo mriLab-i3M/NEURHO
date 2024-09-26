@@ -18,7 +18,7 @@ class WorkflowController(WorkflowWindow):
             print("Co-register tab clicked")
             # Add logic specific to Co-register tab here
         elif index == 2:
-            self.PositioningController.fix_console()
+            self.positioning_window.fix_console()
             print("Positioning tab")
             # Add logic specific to Positioning tab here
         elif index == 3:

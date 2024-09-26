@@ -7,12 +7,11 @@
 from PyQt5.QtWidgets import QApplication
 
 from ui.window_session import SessionWindow
-from controller.controller_main import MainController
+from controller.controller_workflow import WorkflowController
 import os
 import sys
 import configs.hw_config as hw
 
-from controller.controller_workflow import WorkflowController
 
 
 class SessionController(SessionWindow):

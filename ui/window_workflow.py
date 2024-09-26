@@ -4,13 +4,14 @@ import qdarkstyle
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QLabel
 
 from controller.controller_main import MainController
-from controller.controller_positioning import PositioningController
+from positioning.window_positioning import PositioningWindow
 
 
 class WorkflowWindow(QMainWindow):
     def __init__(self, session=None, demo=True):
         super().__init__()
 
+        self.positioning_window = None
         self.session = session
         self.demo = demo
 
@@ -62,11 +63,11 @@ class WorkflowWindow(QMainWindow):
         self.tab2.setLayout(layout)
 
     def setupTab3(self):
-        self.PositioningController = PositioningController(session=self.session, main=self)
+        self.positioning_window = PositioningWindow(session=self.session, main=self)
 
         # Create a layout for the tab and add the Positioning GUI
         layout_positioning = QVBoxLayout()
-        layout_positioning.addWidget(self.PositioningController)
+        layout_positioning.addWidget(self.positioning_window)
 
         # Set the layout to the tab
         self.tab3.setLayout(layout_positioning)
