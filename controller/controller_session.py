@@ -12,8 +12,6 @@ import os
 import sys
 import configs.hw_config as hw
 
-
-
 class SessionController(SessionWindow):
     """
     Controller class for managing the session.

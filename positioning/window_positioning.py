@@ -45,8 +45,8 @@ class PositioningWindow(QWidget):
         ################# layout_qwidget #####################
 
         # Add manual control widget
-        manual_control_widget = WidgetManualControl(main=self)
-        self.layout_left.addWidget(manual_control_widget)
+        self.manual_control_widget = WidgetManualControl(main=self)
+        self.layout_left.addWidget(self.manual_control_widget)
 
         # Add figure display area
         self.figures_layout = FiguresLayoutWidget(main=self)

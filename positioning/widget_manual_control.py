@@ -19,8 +19,7 @@ class WidgetManualControl(QGroupBox):
         self.movements = []  # Class parameter to store movements
 
         # Labels for coordinates
-        labels_text = ["X0 (mm)", "Y0 (mm)", "Z0 (mm)", "Xe (mm)", "Ye (mm)", "Ze (mm)", "Rx (deg)", "Ry (deg)",
-                       "Rz (deg)"]
+        labels_text = ["X0 (mm)", "Y0 (mm)", "Z0 (mm)", "Rx (deg)", "Ry (deg)", "Rz (deg)"]
 
         # Layout for the widget
         layout = QGridLayout()
@@ -67,6 +66,21 @@ class WidgetManualControl(QGroupBox):
         self.button_home.clicked.connect(self.home_clicked)
         self.button_go_back.clicked.connect(self.go_back_clicked)
 
+    def set_target(self, target_values):
+        if len(target_values) != 6:
+            print("ERROR: Expected a list of 6 elements.")
+            return
+
+        for i, value in enumerate(target_values):
+            self.target_edits[i].setText(str(value))
+
+    def set_origin(self, origin_values):
+        if len(origin_values) != 6:
+            print("ERROR: Expected a list of 6 elements.")
+
+        for i, value in enumerate(origin_values):
+            self.origin_labels[i].setText(str(value))
+
     def go_clicked(self):
         thread = threading.Thread(target=self.go_to)
         thread.start()
@@ -91,8 +105,8 @@ class WidgetManualControl(QGroupBox):
             self.origin_labels[i].setText(str(target_value))
 
             # Print the movement for debugging purposes
-            label_text = ["X0", "Y0", "Z0", "Xe", "Ye", "Ze", "Rx", "Ry", "Rz"]
-            print(f"Movement in {label_text[i]}: {delta} {'mm' if i < 6 else 'deg'}")
+            label_text = ["X0", "Y0", "Z0", "Rx", "Ry", "Rz"]
+            print(f"Movement in {label_text[i]}: {delta} {'mm' if i < 3 else 'deg'}")
 
         # Store the deltas in the movements parameter
         self.movements.append(deltas)
@@ -113,8 +127,8 @@ class WidgetManualControl(QGroupBox):
             label.setText("0")
 
             # Print the displacement for debugging purposes
-            label_text = ["X0", "Y0", "Z0", "Xe", "Ye", "Ze", "Rx", "Ry", "Rz"]
-            print(f"Movement in {label_text[i]}: {displacement} {'mm' if i < 6 else 'deg'}")
+            label_text = ["X0", "Y0", "Z0", "Rx", "Ry", "Rz"]
+            print(f"Movement in {label_text[i]}: {displacement} {'mm' if i < 3 else 'deg'}")
 
         # Clear the target edits
         for edit in self.target_edits:
@@ -147,8 +161,8 @@ class WidgetManualControl(QGroupBox):
             label.setText(str(new_value))
 
             # Print the reverse displacement for debugging purposes
-            label_text = ["X0", "Y0", "Z0", "Xe", "Ye", "Ze", "Rx", "Ry", "Rz"]
-            print(f"Reverted movement in {label_text[i]}: {-last_movement[i]} {'mm' if i < 6 else 'deg'}")
+            label_text = ["X0", "Y0", "Z0", "Rx", "Ry", "Rz"]
+            print(f"Reverted movement in {label_text[i]}: {-last_movement[i]} {'mm' if i < 3 else 'deg'}")
 
         # Clear the target edits
         for edit in self.target_edits:

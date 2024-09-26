@@ -6,6 +6,8 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QVBo
 from controller.controller_main import MainController
 from positioning.window_positioning import PositioningWindow
 
+import subprocess
+
 
 class WorkflowWindow(QMainWindow):
     def __init__(self, session=None, demo=True):
@@ -15,7 +17,13 @@ class WorkflowWindow(QMainWindow):
         self.session = session
         self.demo = demo
 
-        self.setWindowTitle("NEURHO GUI")
+        try:
+            tag = subprocess.check_output(['git', 'describe', '--tags'], stderr=subprocess.STDOUT).strip().decode(
+                'utf-8')
+        except subprocess.CalledProcessError as e:
+            print(f"Error getting Git tag: {e.output.decode('utf-8')}")
+
+        self.setWindowTitle("NEURHO GUI " + tag)
         self.setGeometry(100, 100, 600, 400)
 
         # Create a QTabWidget

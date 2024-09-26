@@ -71,13 +71,16 @@ class Plot3DWidget(pg.ImageView):
 
         # Ensure the coordinates are within bounds of the image data
         if 0 <= x < self.data.shape[1] and 0 <= y < self.data.shape[2]:
-            print(f"Clicked at image coordinates: ({x}, {y}) on slice {z}")
-            if self.ui.roiBtn.isChecked():
+            if self.ui.roiBtn.isChecked():  # Origin
                 # Mark the position on the plot
                 self.markPosition(x, y, z, self.marker_o)
-            elif self.ui.menuBtn.isChecked():
+                self.main.manual_control_widget.set_origin([x, y, z, 0, 0, 0])
+                print(f"Origin coordinates: ({x}, {y}, {z})")
+            elif self.ui.menuBtn.isChecked():  # Target
                 # Mark the position on the plot
                 self.markPosition(x, y, z, self.marker_t)
+                self.main.manual_control_widget.set_target([x, y, z, 0, 0, 0])
+                print(f"Target coordinates: ({x}, {y}, {z})")
 
     def markPosition(self, x, y, z, marker):
         """
