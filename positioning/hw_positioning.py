@@ -1,0 +1,1 @@
+length = 1000  # mm, length of the pole

@@ -74,12 +74,12 @@ class Plot3DWidget(pg.ImageView):
             if self.ui.roiBtn.isChecked():  # Origin
                 # Mark the position on the plot
                 self.markPosition(x, y, z, self.marker_o)
-                self.main.manual_control_widget.set_origin([x, y, z, 0, 0, 0])
+                self.main.manual_control_widget.set_origin([x, y, z])
                 print(f"Origin coordinates: ({x}, {y}, {z})")
             elif self.ui.menuBtn.isChecked():  # Target
                 # Mark the position on the plot
                 self.markPosition(x, y, z, self.marker_t)
-                self.main.manual_control_widget.set_target([x, y, z, 0, 0, 0])
+                self.main.manual_control_widget.set_target([x, y, z])
                 print(f"Target coordinates: ({x}, {y}, {z})")
 
     def markPosition(self, x, y, z, marker):

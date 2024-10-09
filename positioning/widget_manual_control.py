@@ -1,5 +1,9 @@
 import threading
 
+import numpy as np
+
+import positioning.hw_positioning as hwp
+
 from PyQt5.QtWidgets import QGroupBox, QSizePolicy, QLabel, QLineEdit, QPushButton, QGridLayout, QApplication, \
     QHBoxLayout
 
@@ -14,37 +18,52 @@ class WidgetManualControl(QGroupBox):
         self.setMaximumWidth(400)
 
         # Initialized parameters
-        self.origin_labels = []
-        self.target_edits = []
+        self.o_ima_edits = []
+        self.o_hex_labels = []
+        self.t_ima_edits = []
+        self.t_hex_labels = []
         self.movements = []  # Class parameter to store movements
 
         # Labels for coordinates
-        labels_text = ["X0 (mm)", "Y0 (mm)", "Z0 (mm)", "Rx (deg)", "Ry (deg)", "Rz (deg)"]
+        labels_text = ["X0 (mm)", "Y0 (mm)", "Z0 (mm)", "Phi (deg)", "Theta (deg)"]
 
         # Layout for the widget
         layout = QGridLayout()
 
         # Add header labels for "Origin" and "Target"
-        layout.addWidget(QLabel("Origin"), 0, 1)
-        layout.addWidget(QLabel("Target"), 0, 2)
+        layout.addWidget(QLabel("O_ima"), 0, 1)
+        layout.addWidget(QLabel("O_hex"), 0, 2)
+        layout.addWidget(QLabel("T_ima"), 0, 3)
+        layout.addWidget(QLabel("T_hex"), 0, 4)
 
         # Loop to create labels, origin values, and input fields
         for i, label in enumerate(labels_text):
             layout.addWidget(QLabel(label), i + 1, 0)
 
-            # Origin QLabel (defaulted to 0)
-            origin_label = QLabel("0")
-            self.origin_labels.append(origin_label)
-            layout.addWidget(origin_label, i + 1, 1)
+            # Origin in image QLineEdit (with placeholder text as 0)
+            o_ima_edit = QLineEdit()
+            o_ima_edit.setPlaceholderText("0")
+            self.o_ima_edits.append(o_ima_edit)
+            layout.addWidget(o_ima_edit, i + 1, 1)
 
-            # Target QLineEdit (with placeholder text as 0)
-            target_edit = QLineEdit()
-            target_edit.setPlaceholderText("0")
-            self.target_edits.append(target_edit)
-            layout.addWidget(target_edit, i + 1, 2)
+            # Origin in hexapod QLabel (defaulted to 0)
+            o_hex_label = QLabel("0")
+            self.o_hex_labels.append(o_hex_label)
+            layout.addWidget(o_hex_label, i + 1, 2)
+
+            # Target in image QLineEdit (with placeholder text as 0)
+            t_ima_edit = QLineEdit()
+            t_ima_edit.setPlaceholderText("0")
+            self.t_ima_edits.append(t_ima_edit)
+            layout.addWidget(t_ima_edit, i + 1, 3)
+
+            # Target in hexapod QLabel (defaulted to 0)
+            t_hex_label = QLabel("0")
+            self.t_hex_labels.append(t_hex_label)
+            layout.addWidget(t_hex_label, i + 1, 4)
 
         buttons_layout = QHBoxLayout()
-        layout.addLayout(buttons_layout, len(labels_text) + 1, 0, 1, 3)
+        layout.addLayout(buttons_layout, len(labels_text) + 1, 0, 1, 5)
 
         # Create and add the "Go" button
         self.button_go = QPushButton("Go")
@@ -66,20 +85,74 @@ class WidgetManualControl(QGroupBox):
         self.button_home.clicked.connect(self.home_clicked)
         self.button_go_back.clicked.connect(self.go_back_clicked)
 
+        # Connect the QLineEdit to their handlers
+        for line_edit in self.o_ima_edits:
+            line_edit.textChanged.connect(self.o_ima_edits_changed)
+
+        for line_edit in self.t_ima_edits:
+            line_edit.textChanged.connect(self.t_ima_edits_changed)
+
+        # Set initial values
+        self.o_ima_edits[-1].setPlaceholderText("90")
+        self.t_ima_edits[-1].setPlaceholderText("90")
+        self.o_ima_edits_changed()
+        self.t_ima_edits_changed()
+
+    def o_ima_edits_changed(self):
+        # Get image coordinates
+        r_ima = []
+        for edit in self.o_ima_edits:
+            r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+
+        # Calculate hexapod coordinates
+        x_hex = r_ima[0] - hwp.length * np.cos(r_ima[3] * np.pi/180) * np.sin(r_ima[4] * np.pi/180)
+        y_hex = r_ima[1] - hwp.length * np.sin(r_ima[3] * np.pi/180) * np.sin(r_ima[4] * np.pi/180)
+        z_hex = r_ima[2] - hwp.length * np.cos(r_ima[4] * np.pi/180)
+        phi_hex = r_ima[3]
+        theta_hex = r_ima[4]
+
+        # Set values to the hexapod coordiante labels
+        self.o_hex_labels[0].setText("%.1f" % x_hex)
+        self.o_hex_labels[1].setText("%.1f" % y_hex)
+        self.o_hex_labels[2].setText("%.1f" % z_hex)
+        self.o_hex_labels[3].setText("%.1f" % phi_hex)
+        self.o_hex_labels[4].setText("%.1f" % theta_hex)
+
+    def t_ima_edits_changed(self):
+        # Get image coordinates
+        r_ima = []
+        for edit in self.t_ima_edits:
+            r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+
+        # Calculate hexapod coordinates
+        x_hex = r_ima[0] - hwp.length * np.cos(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180)
+        y_hex = r_ima[1] - hwp.length * np.sin(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180)
+        z_hex = r_ima[2] - hwp.length * np.cos(r_ima[4] * np.pi / 180)
+        phi_hex = r_ima[3]
+        theta_hex = r_ima[4]
+
+        # Set values to the hexapod coordiante labels
+        self.t_hex_labels[0].setText("%.1f" % x_hex)
+        self.t_hex_labels[1].setText("%.1f" % y_hex)
+        self.t_hex_labels[2].setText("%.1f" % z_hex)
+        self.t_hex_labels[3].setText("%.1f" % phi_hex)
+        self.t_hex_labels[4].setText("%.1f" % theta_hex)
+
     def set_target(self, target_values):
-        if len(target_values) != 6:
-            print("ERROR: Expected a list of 6 elements.")
+        if len(target_values) != 3:
+            print("ERROR: Expected a list of 3 elements.")
             return
 
         for i, value in enumerate(target_values):
-            self.target_edits[i].setText(str(value))
+            self.t_ima_edits[i].setText(str(value))
 
     def set_origin(self, origin_values):
-        if len(origin_values) != 6:
-            print("ERROR: Expected a list of 6 elements.")
+        if len(origin_values) != 3:
+            print("ERROR: Expected a list of 3 elements.")
 
+        # Set values for origin image coordinates
         for i, value in enumerate(origin_values):
-            self.origin_labels[i].setText(str(value))
+            self.o_ima_edits[i].setText(str(value))
 
     def go_clicked(self):
         thread = threading.Thread(target=self.go_to)
