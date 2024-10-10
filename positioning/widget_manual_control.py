@@ -98,88 +98,80 @@ class WidgetManualControl(QGroupBox):
         self.o_ima_edits_changed()
         self.t_ima_edits_changed()
 
-    def o_ima_edits_changed(self):
-        # Get image coordinates
+    def get_position(self, point=None):
+        # Get coordinates at image
         r_ima = []
-        for edit in self.o_ima_edits:
-            r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+        if point == 'origin':
+            for edit in self.o_ima_edits:
+                r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+        elif point == 'target':
+            for edit in self.t_ima_edits:
+                r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+        else:
+            print("point parameter not found")
+            return 0
 
         # Calculate hexapod coordinates
-        x_hex = r_ima[0] - hwp.length * np.cos(r_ima[3] * np.pi/180) * np.sin(r_ima[4] * np.pi/180)
-        y_hex = r_ima[1] - hwp.length * np.sin(r_ima[3] * np.pi/180) * np.sin(r_ima[4] * np.pi/180)
-        z_hex = r_ima[2] - hwp.length * np.cos(r_ima[4] * np.pi/180)
-        phi_hex = r_ima[3]
-        theta_hex = r_ima[4]
+        r_hex = [r_ima[0] - hwp.length * np.cos(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180),
+                 r_ima[1] - hwp.length * np.sin(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180),
+                 r_ima[2] - hwp.length * np.cos(r_ima[4] * np.pi / 180),
+                 r_ima[3],
+                 r_ima[4]]
+
+        return r_ima, r_hex
+
+    def set_position(self, point=None, coordinates=None):
+        if point == 'origin':
+            for i, value in enumerate(coordinates):
+                self.o_ima_edits[i].setText(str(value))
+        elif point == 'target':
+            for i, value in enumerate(coordinates):
+                self.t_ima_edits[i].setText(str(value))
+        else:
+            print("point parameter not found")
+            return 0
+
+    def o_ima_edits_changed(self):
+        # Get hexapod coordinates
+        _, r_hex = self.get_position('origin')
 
         # Set values to the hexapod coordiante labels
-        self.o_hex_labels[0].setText("%.1f" % x_hex)
-        self.o_hex_labels[1].setText("%.1f" % y_hex)
-        self.o_hex_labels[2].setText("%.1f" % z_hex)
-        self.o_hex_labels[3].setText("%.1f" % phi_hex)
-        self.o_hex_labels[4].setText("%.1f" % theta_hex)
+        for ii in range(len(self.o_hex_labels)):
+            self.o_hex_labels[ii].setText("%.1f" % r_hex[ii])
 
     def t_ima_edits_changed(self):
-        # Get image coordinates
-        r_ima = []
-        for edit in self.t_ima_edits:
-            r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
-
-        # Calculate hexapod coordinates
-        x_hex = r_ima[0] - hwp.length * np.cos(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180)
-        y_hex = r_ima[1] - hwp.length * np.sin(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180)
-        z_hex = r_ima[2] - hwp.length * np.cos(r_ima[4] * np.pi / 180)
-        phi_hex = r_ima[3]
-        theta_hex = r_ima[4]
+        # Get hexapod coordinates
+        _, r_hex = self.get_position('target')
 
         # Set values to the hexapod coordiante labels
-        self.t_hex_labels[0].setText("%.1f" % x_hex)
-        self.t_hex_labels[1].setText("%.1f" % y_hex)
-        self.t_hex_labels[2].setText("%.1f" % z_hex)
-        self.t_hex_labels[3].setText("%.1f" % phi_hex)
-        self.t_hex_labels[4].setText("%.1f" % theta_hex)
-
-    def set_target(self, target_values):
-        if len(target_values) != 3:
-            print("ERROR: Expected a list of 3 elements.")
-            return
-
-        for i, value in enumerate(target_values):
-            self.t_ima_edits[i].setText(str(value))
-
-    def set_origin(self, origin_values):
-        if len(origin_values) != 3:
-            print("ERROR: Expected a list of 3 elements.")
-
-        # Set values for origin image coordinates
-        for i, value in enumerate(origin_values):
-            self.o_ima_edits[i].setText(str(value))
+        for ii in range(len(self.t_hex_labels)):
+            self.t_hex_labels[ii].setText("%.1f" % r_hex[ii])
 
     def go_clicked(self):
         thread = threading.Thread(target=self.go_to)
         thread.start()
 
+    def move_FUS(self, displacement=None):
+        # TODO: This method will start the movement of the robot.
+        print("ERROR: Robot movement pending of firmware acquisition...")
+        pass
+
     def go_to(self):
-        # Initialize lists to store the calculated deltas
-        deltas = []
+        # Get hexapod coordinates and displacement
+        _, r_hex_origin = self.get_position('origin')
+        r_ima_target, r_hex_target = self.get_position('target')
+        deltas = list(np.array(r_hex_target) - np.array(r_hex_origin))
 
-        # Loop through the target edits and origin labels to calculate movements
-        for i in range(len(self.target_edits)):
-            # Retrieve the origin value from QLabel
-            origin_value = float(self.origin_labels[i].text())
+        # Move the robot according to the deltas
+        self.move_FUS(deltas)
 
-            # Retrieve the target value from QLineEdit
-            target_value = float(self.target_edits[i].text()) if self.target_edits[i].text() else 0.0
+        # Update the origin label with the target value
+        self.set_position(point='origin', coordinates=r_ima_target)
 
-            # Calculate the movement (delta)
-            delta = target_value - origin_value
-            deltas.append(delta)
-
-            # Update the origin label with the target value
-            self.origin_labels[i].setText(str(target_value))
-
-            # Print the movement for debugging purposes
-            label_text = ["X0", "Y0", "Z0", "Rx", "Ry", "Rz"]
-            print(f"Movement in {label_text[i]}: {delta} {'mm' if i < 3 else 'deg'}")
+        # Print the movement for debugging purposes
+        label_text = ["X0", "Y0", "Z0", "Phi", "Theta"]
+        for ii, label in enumerate(label_text):
+            print("Movement in %s: %.1f %s" % (label, deltas[ii], 'mm' if ii < 3 else 'deg'))
 
         # Store the deltas in the movements parameter
         self.movements.append(deltas)
