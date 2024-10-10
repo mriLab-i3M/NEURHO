@@ -22,7 +22,9 @@ class WidgetManualControl(QGroupBox):
         self.o_hex_labels = []
         self.t_ima_edits = []
         self.t_hex_labels = []
-        self.movements = []  # Class parameter to store movements
+        self.movements = []  # Store movements
+        self.positions_ima = []  # Store positions in image
+        self.positions_hex = []  # Store positions of hexapod
 
         # Labels for coordinates
         labels_text = ["X0 (mm)", "Y0 (mm)", "Z0 (mm)", "Phi (deg)", "Theta (deg)"]
@@ -103,13 +105,19 @@ class WidgetManualControl(QGroupBox):
         r_ima = []
         if point == 'origin':
             for edit in self.o_ima_edits:
-                r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+                try:
+                    r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+                except:
+                    return False
         elif point == 'target':
             for edit in self.t_ima_edits:
-                r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+                try:
+                    r_ima.append(float(edit.text() if edit.text() else float(edit.placeholderText())))
+                except:
+                    return False
         else:
             print("point parameter not found")
-            return 0
+            return False
 
         # Calculate hexapod coordinates
         r_hex = [r_ima[0] - hwp.length * np.cos(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180),
@@ -141,11 +149,12 @@ class WidgetManualControl(QGroupBox):
 
     def t_ima_edits_changed(self):
         # Get hexapod coordinates
-        _, r_hex = self.get_position('target')
-
-        # Set values to the hexapod coordiante labels
-        for ii in range(len(self.t_hex_labels)):
-            self.t_hex_labels[ii].setText("%.1f" % r_hex[ii])
+        result = self.get_position('target')
+        if result is not False:
+            # Set values to the hexapod coordiante labels
+            _, r_hex = result
+            for ii in range(len(self.t_hex_labels)):
+                self.t_hex_labels[ii].setText("%.1f" % r_hex[ii])
 
     def go_clicked(self):
         thread = threading.Thread(target=self.go_to)
@@ -175,6 +184,8 @@ class WidgetManualControl(QGroupBox):
 
         # Store the deltas in the movements parameter
         self.movements.append(deltas)
+        self.positions_ima.append(r_ima_target)
+        self.positions_hex.append(r_hex_target)
 
         print("READY: Movement completed.\n")
 
@@ -192,32 +203,17 @@ class WidgetManualControl(QGroupBox):
         thread.start()
 
     def go_back(self):
-        if not self.movements:
+        if len(self.movements) <= 1:
             print("WARNING: No movements to revert.\n")
             return
 
         # Get the last movement
-        last_movement = self.movements.pop()  # Retrieve and remove the last movement
+        last_position_ima = self.positions_ima[-2]
 
-        # Loop through the origin labels to apply the reverse movement
-        for i, label in enumerate(self.origin_labels):
-            current_value = float(label.text())  # Get the current value
+        # Set target to last position
+        self.set_position(point='target', coordinates=last_position_ima)
+        self.go_to()
 
-            # Calculate the new position by reversing the last movement
-            new_value = current_value - last_movement[i]
-
-            # Update the origin label with the new value
-            label.setText(str(new_value))
-
-            # Print the reverse displacement for debugging purposes
-            label_text = ["X0", "Y0", "Z0", "Rx", "Ry", "Rz"]
-            print(f"Reverted movement in {label_text[i]}: {-last_movement[i]} {'mm' if i < 3 else 'deg'}")
-
-        # Clear the target edits
-        for edit in self.target_edits:
-            edit.clear()
-
-        print("READY: Last movement reverted.\n")
 
 if __name__ == "__main__":
     import sys
@@ -226,4 +222,3 @@ if __name__ == "__main__":
     window = WidgetManualControl(None)
     window.show()
     sys.exit(app.exec_())
-
