@@ -183,25 +183,9 @@ class WidgetManualControl(QGroupBox):
         thread.start()
 
     def go_home(self):
-        # Revert all movements to their initial state (e.g., 0)
-        for i, label in enumerate(self.origin_labels):
-            current_value = float(label.text())
-            displacement = -current_value  # Moving back to home (0)
-
-            # Update the origin label to 0
-            label.setText("0")
-
-            # Print the displacement for debugging purposes
-            label_text = ["X0", "Y0", "Z0", "Rx", "Ry", "Rz"]
-            print(f"Movement in {label_text[i]}: {displacement} {'mm' if i < 3 else 'deg'}")
-
-        # Clear the target edits
-        for edit in self.target_edits:
-            edit.clear()
-
-        # Clear the movements list
-        self.movements.clear()
-        print("READY: All movements reverted to home position.\n")
+        # Set target to Zero
+        self.set_position(point="target", coordinates=[0, 0, 0, 0, 90])
+        self.go_to()
 
     def go_back_clicked(self):
         thread = threading.Thread(target=self.go_back)
