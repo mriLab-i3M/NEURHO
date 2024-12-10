@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QVBo
 
 from controller.controller_main import MainController
 from positioning.window_positioning import PositioningWindow
+from treatment.window_treatment import MyApp
 
 import subprocess
 
@@ -81,9 +82,10 @@ class WorkflowWindow(QMainWindow):
         self.tab3.setLayout(layout_positioning)
 
     def setupTab4(self):
+        self.treatment_window = MyApp()
+
         layout = QVBoxLayout()
-        label = QLabel("This is Tab 4")
-        layout.addWidget(label)
+        layout.addWidget(self.treatment_window)
         self.tab4.setLayout(layout)
 
 if __name__ == "__main__":

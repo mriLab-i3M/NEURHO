@@ -23,4 +23,5 @@ class WorkflowController(WorkflowWindow):
             # Add logic specific to Positioning tab here
         elif index == 3:
             print("Treatment tab clicked")
+            # self.treatment_window.fix_console()
             # Add logic specific to Treatment tab here
