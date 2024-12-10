@@ -306,7 +306,7 @@ class MyApp(QWidget):
             self.ncycles_box.setValue(self.N_cycles)
         else:
             self.N_cycles = value
-            print("Number of cycles changed to: ", self.N_cycles)
+            print("Number of cycles changed to: %i" % self.N_cycles)
 
     def prptime_changed(self, value):
         if (self.N_cycles/self.frequency) > value:
@@ -317,7 +317,7 @@ class MyApp(QWidget):
 
     def nbursts_changed(self, value):
         self.N_bursts = value
-        print("Number of bursts changed to: ", self.N_bursts)
+        print("Number of bursts changed to: %i" % self.N_bursts)
 
     def signal_generate_button_click(self):
         # Update the plot before generating the signal
