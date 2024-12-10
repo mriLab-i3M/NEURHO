@@ -82,7 +82,7 @@ class WorkflowWindow(QMainWindow):
         self.tab3.setLayout(layout_positioning)
 
     def setupTab4(self):
-        self.treatment_window = MyApp()
+        self.treatment_window = MyApp(main=self)
 
         layout = QVBoxLayout()
         layout.addWidget(self.treatment_window)

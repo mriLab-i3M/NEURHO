@@ -68,8 +68,9 @@ if (not UI_DEBUG):
     from picosdk import assert_pico_ok
 
 class MyApp(QWidget):
-    def __init__(self):
+    def __init__(self, main=None):
         super().__init__()
+        self.main=main
 
         # Hardware parameters
         self.status = {}
@@ -203,17 +204,26 @@ class MyApp(QWidget):
         buttons_layout.addWidget(self.preview_button)
         buttons_layout.addWidget(self.signal_generate_button)
 
+        # Define console
+        try:
+            self.console = self.main.MaRGE.console
+        except AttributeError as e:
+            print(f"Error accessing MaRGE console: {e}")
+            self.console = None
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            self.console = None
 
         # Create a vertical layout
-        param_layout = QVBoxLayout()
-        param_layout.addLayout(selectwave_layout)
-        param_layout.addLayout(vpeak_layout)
-        param_layout.addLayout(freq_layout)
-        param_layout.addLayout(voff_layout)
-        param_layout.addLayout(ncycles_layout)
-        param_layout.addLayout(prptime_layout)
-        param_layout.addLayout(nbursts_layout)
-        param_layout.addLayout(buttons_layout)
+        self.param_layout = QVBoxLayout()
+        self.param_layout.addLayout(selectwave_layout)
+        self.param_layout.addLayout(vpeak_layout)
+        self.param_layout.addLayout(freq_layout)
+        self.param_layout.addLayout(voff_layout)
+        self.param_layout.addLayout(ncycles_layout)
+        self.param_layout.addLayout(prptime_layout)
+        self.param_layout.addLayout(nbursts_layout)
+        self.param_layout.addLayout(buttons_layout)
 
 
          # Create Matplotlib Figure and Canvas
@@ -224,7 +234,7 @@ class MyApp(QWidget):
 
         # Create main layout
         layout = QHBoxLayout()
-        layout.addLayout(param_layout)
+        layout.addLayout(self.param_layout)
         layout.addLayout(plot_layout)
 
         # Set the layout for the window
@@ -257,6 +267,9 @@ class MyApp(QWidget):
         self.cont_wave_msg.setWindowTitle("Continuous wave mode")
         cont_wave_button = self.cont_wave_msg.addButton(QMessageBox.Ok)
         cont_wave_button.setText("Stop")
+
+    def fix_console(self):
+        self.param_layout.addWidget(self.console)
 
     # GUI functions
     def wavetype_changed(self):
