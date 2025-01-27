@@ -20,17 +20,18 @@ from controller.controller_toolbar_sequences import SequenceController
 from controller.controller_sequence_list import SequenceListController
 from controller.controller_sequence_inputs import SequenceInputsController
 from widgets.widget_custom_and_protocol import CustomAndProtocolWidget
-from ui.window_postprocessing import MainWindow as PostWindow
+from controller.controller_postprocessing import ProcessingWindowController
 
 
 class MainWindow(QWidget):
     def __init__(self, session, demo=False, parent=None):
-        super(MainWindow, self).__init__(parent)
+        super(MainWindow, self).__init__()
         self.app_open = True
         self.toolbar_sequences = None
         self.toolbar_marcos = None
         self.session = session
         self.demo = demo
+        self.parent = parent
         self.setWindowTitle(session['directory'])
         self.setGeometry(20, 40, 1680, 720)
 

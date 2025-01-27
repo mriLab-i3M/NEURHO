@@ -109,17 +109,7 @@ class SequenceController(SequenceToolBar):
                 seq.mapVals['rfExAmp'] = rf_amp
                 seq.mapVals['rfReAmp'] = rf_amp
 
-                # Save csv with input parameters for larmor after RabiFlops
-                seq = defaultsequences['Larmor']
-                with open('calibration/%s_last_parameters.csv' % seq.mapVals['seqName'], 'w') as csvfile:
-                    writer = csv.DictWriter(csvfile, fieldnames=seq.mapKeys)
-                    writer.writeheader()
-                    map_vals = {}
-                    for key in seq.mapKeys:  # take only the inputs from mapVals
-                        map_vals[key] = seq.mapVals[key]
-                    writer.writerows([seq.mapNmspc, map_vals])
-
-            self.runToList(seq_name=seq_name)
+            self.runToList(seq_name=seq_name, item_name="Calibration_"+seq_name)
 
         # Update the inputs of the sequences
         self.main.sequence_list.updateSequence()
@@ -158,7 +148,7 @@ class SequenceController(SequenceToolBar):
             self.new_run = True
 
         # Save sequence list into the current sequence, just in case you need to do sweep
-        defaultsequences[self.seq_name].sequenceList = defaultsequences
+        defaultsequences[self.seq_name].sequence_list = defaultsequences
 
         # Add sequence name for metadata
         defaultsequences[self.seq_name].raw_data_name = self.seq_name
@@ -321,7 +311,7 @@ class SequenceController(SequenceToolBar):
         # Create sequence to plot
         print('Plot sequence')
         defaultsequences[self.seq_name].sequenceAtributes()
-        if defaultsequences[self.seq_name].sequenceRun(1, demo=self.demo):
+        if defaultsequences[self.seq_name].sequenceRun(1, demo=self.main.demo):
             # Delete previous plots
             self.main.figures_layout.clearFiguresLayout()
         else:

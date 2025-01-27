@@ -27,6 +27,7 @@ class ConsoleController(ConsoleWidget):
 
     def __init__(self):
         super().__init__()
+        sys.stdout = EmittingStream(textWritten=self.write_console)
 
     def setup_console(self):
         # Redirect the output of print to the console widget
@@ -67,6 +68,12 @@ class ConsoleController(ConsoleWidget):
 
         self.console.setTextCursor(cursor)
         self.console.ensureCursorVisible()
+
+    def clear_console(self):
+        """
+        Clear the console widget by removing all its contents.
+        """
+        self.console.clear()  # Clears the console content
 
 class EmittingStream(QObject):
     """

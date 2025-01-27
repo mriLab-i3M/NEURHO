@@ -20,6 +20,7 @@ from seq.sequences import defaultsequences
 from widgets.widget_history_list import HistoryListWidget
 from manager.dicommanager import DICOMImage
 import numpy as np
+import configs.hw_config as hw
 
 
 class HistoryListController(HistoryListWidget):
@@ -53,14 +54,16 @@ class HistoryListController(HistoryListWidget):
         self.itemChanged.connect(self.main.sequence_list.updateSequence)
         self.itemEntered.connect(self.main.sequence_list.updateSequence)
 
+    def delete_items(self):
+        while self.count() > 0:
+            self.deleteTask(item_number=0)
+
     def showContextMenu(self, point):
         """
         Displays a context menu at the given point.
 
         :param point: The position where the context menu should be displayed.
         """
-        # Send printed text to the corresponding console
-        self.main.console.setup_console()
 
         self.clicked_item = self.itemAt(point)
         if self.clicked_item is not None:
@@ -87,13 +90,24 @@ class HistoryListController(HistoryListWidget):
         self.main.post_gui.showMaximized()
         self.main.post_gui.toolbar_image.rawDataLoading(file_path=path + "/mat/", file_name=item_name)
 
-    def deleteTask(self):
+    def deleteTask(self, item_number=None):
         """
         Deletes the currently selected task from the list.
 
         This method removes the currently selected task item from the list widget.
         """
-        self.takeItem(self.row(self.currentItem()))
+        if item_number is None:
+            item = self.currentItem()
+        else:
+            item = self.item(item_number)
+        text = item.text()
+        text = text.split(".", maxsplit=2)
+        key = text[0] + "." + text[1]
+        self.takeItem(self.row(item))
+        if key in self.pending_inputs.keys():
+            self.pending_inputs.pop(text)
+        if key in self.inputs.keys():
+            self.inputs.pop(key)
 
     def addNewFigure(self):
         """
@@ -177,7 +191,7 @@ class HistoryListController(HistoryListWidget):
                 label.setText(self.labels[n])
                 self.main.figures_layout.addWidget(label, row=1, col=col)
                 self.main.figures_layout.addWidget(image, row=2, col=col)
-                self.main.figures_layout.addWidget(sub_label, row=0, col=0, colspan=col+1)
+                self.main.figures_layout.addWidget(sub_label, row=0, col=0, colspan=col + 1)
             except:
                 pass
             n += 1
@@ -196,8 +210,6 @@ class HistoryListController(HistoryListWidget):
 
         :param item: The selected item from which to retrieve the corresponding input data.
         """
-        # Send printed text to the corresponding console
-        self.main.console.setup_console()
 
         # Get the corresponding key to get access to the history dictionary
         item_time = item.text().split(' | ')[0]
@@ -237,8 +249,6 @@ class HistoryListController(HistoryListWidget):
 
         :param item: The selected item from which to retrieve the corresponding output information.
         """
-        # Send printed text to the corresponding console
-        self.main.console.setup_console()
 
         # Get the corresponding key to get access to the history dictionary
         item_time = item.text().split(' | ')[0]
@@ -325,11 +335,22 @@ class HistoryListController(HistoryListWidget):
                     seq_name = self.pending_inputs[key][1][0]
                     sequence = copy.copy(defaultsequences[seq_name])
 
-                    # Modify input parameters of the sequence
+                    # Modify input parameters of the sequence according to current item
                     n = 0
                     for keyParam in sequence.mapKeys:
                         sequence.mapVals[keyParam] = self.pending_inputs[key][1][n]
                         n += 1
+
+                    # Specific tasks for calibration
+                    if "Calibration" in key:
+                        if seq_name == 'Larmor':
+                            sequence.mapVals['larmorFreq'] = hw.larmorFreq
+                            try:
+                                sequence.mapVals['shimming'] = defaultsequences['Shimming'].mapVals['shimming']
+                            except:
+                                pass
+                        if seq_name == 'RabiFlops':
+                            sequence.mapVals['shimming'] = defaultsequences['Shimming'].mapVals['shimming']
 
                     # Run the sequence
                     key_index = keys.index(key)
@@ -375,7 +396,7 @@ class HistoryListController(HistoryListWidget):
             object: The result of the sequence analysis.
         """
         # Save sequence list into the current sequence, just in case you need to do sweep
-        sequence.sequenceList = defaultsequences
+        sequence.sequence_list = defaultsequences
         sequence.raw_data_name = raw_data_name
 
         # Save input parameters
@@ -542,7 +563,7 @@ class HistoryListControllerPos(HistoryListWidget):
                 label = QLabel(self.labels[n])
                 label.setAlignment(QtCore.Qt.AlignCenter)
                 label.setStyleSheet("background-color: black;color: white")
-                self.main.image_view_widget.addWidget(label, row=2*(idx//4)+1, col=idx%4)
+                self.main.image_view_widget.addWidget(label, row=2 * (idx // 4) + 1, col=idx % 4)
 
                 # Figure
                 image2show, x_label, y_label, title = self.main.toolbar_image.fixImage(self.figures[n],
@@ -552,9 +573,9 @@ class HistoryListControllerPos(HistoryListWidget):
                                        x_label=x_label,
                                        y_label=y_label,
                                        title=title)
-                self.main.image_view_widget.addWidget(image, row=2*(idx//4)+2, col=idx%4)
+                self.main.image_view_widget.addWidget(image, row=2 * (idx // 4) + 2, col=idx % 4)
 
-                ncol = np.max([ncol, idx%4+1])
+                ncol = np.max([ncol, idx % 4 + 1])
                 self.main.image_view_widget.addWidget(sub_label, row=0, col=0, colspan=ncol)
             except:
                 pass
@@ -582,7 +603,6 @@ class HistoryListControllerPos(HistoryListWidget):
             self.operations_hist[self.image_key] = operations
         self.main.image_view_widget.image_key = self.image_key
 
-
         # Update the space dictionary
         self.space[self.image_key] = space
 
@@ -595,8 +615,6 @@ class HistoryListControllerPos(HistoryListWidget):
         Args:
             item (QListWidgetItem): The selected item in the history list.
         """
-        # Send printed text to the corresponding console
-        self.main.console.setup_console()
 
         image_key = item.text()
         if image_key in self.image_hist.keys():
@@ -657,8 +675,6 @@ class HistoryListControllerPos(HistoryListWidget):
         Args:
             item (QListWidgetItem): The selected item in the history list.
         """
-        # Send printed text to the corresponding console
-        self.main.console.setup_console()
 
         # Clear the methods_list table
         self.main.methods_list.setText('')
@@ -731,7 +747,7 @@ class HistoryListControllerPos(HistoryListWidget):
 
         if selected_item.text() in self.image_hist:
             del self.image_hist[selected_item.text()]
-            
+
         if selected_item.text() in self.operations_hist:
             del self.operations_hist[selected_item.text()]
 

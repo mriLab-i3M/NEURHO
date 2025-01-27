@@ -253,11 +253,11 @@ class RARE(blankSeq.MRIBLANKSEQ):
             self.iniSequence(20, self.shimming)
             while acqPoints+self.etl*nRD<=hw.maxRdPoints and orders<=hw.maxOrders and repeIndexGlobal<nRepetitions:
                 # Initialize time
-                tEx = 20e3+self.repetitionTime*repeIndex+self.inversionTime+self.preExTime
+                tEx = self.repetitionTime+self.repetitionTime*repeIndex+self.inversionTime+self.preExTime
 
                 # First I do a noise measurement.
                 if repeIndex==0:
-                    t0 = tEx-self.preExTime-self.inversionTime-self.acqTime-2*addRdPoints/BW-self.rfExTime/2-hw.blkTime
+                    t0 = 40
                     self.rxGate(t0, self.acqTime+2*addRdPoints/BW)
                     acqPoints += nRD
 
@@ -380,7 +380,7 @@ class RARE(blankSeq.MRIBLANKSEQ):
                 repeIndex+=1 # Update the repeIndex after the ETL
 
             # Turn off the gradients after the end of the batch
-            self.endSequence(repeIndex*self.repetitionTime)
+            self.endSequence((repeIndex+1)*self.repetitionTime)
 
             # Return the output variables
             return(phIndex, slIndex, lnIndex, repeIndexGlobal, acqPoints)
@@ -399,7 +399,7 @@ class RARE(blankSeq.MRIBLANKSEQ):
         self.echo_shift = self.echo_shift*1e6
         nRepetitions = int(nSL*nPH/self.etl)
         scanTime = nRepetitions*self.repetitionTime
-        self.mapVals['scanTime'] = scanTime*nSL*1e-6
+        self.mapVals['Scan Time (s)'] = scanTime*self.nScans*1e-6
 
         # Create full sequence
         # Run the experiment
@@ -788,8 +788,8 @@ class RARE(blankSeq.MRIBLANKSEQ):
         self.mapVals['angle'] = 0.0
         self.mapVals['dfov'] = [0.0, 0.0, 0.0]
         try:
-            self.sequenceList['RARE'].mapVals['angle'] = 0.0
-            self.sequenceList['RARE'].mapVals['dfov'] = [0.0, 0.0, 0.0]
+            self.sequence_list['RARE'].mapVals['angle'] = 0.0
+            self.sequence_list['RARE'].mapVals['dfov'] = [0.0, 0.0, 0.0]
         except:
             pass
         hw.dfov = [0.0, 0.0, 0.0]
