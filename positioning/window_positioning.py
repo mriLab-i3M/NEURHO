@@ -14,6 +14,7 @@ import qdarkstyle
 from positioning.widget_manual_control import WidgetManualControl
 from positioning.widget_plot3d import Plot3DWidget
 from positioning.widget_figures import FiguresLayoutWidget
+from positioning.viewpyqtgraph import mainpyqtgraph
 
 
 class PositioningWindow(QWidget):
@@ -84,7 +85,7 @@ class PositioningWindow(QWidget):
         image, x_label, y_label, title = self.fixImage(image, axes)
 
         # Create the plot widget and add it to the figures_layout
-        image_widget = Plot3DWidget(main=self, data=image, title=title, x_label=x_label, y_label=y_label)
+        image_widget = mainpyqtgraph('RAREprotocols_T1_SAG_Right.2023.10.24.19.28.37.989.mat')
         self.figures_layout.clear_figures_layout()
         self.figures_layout.addWidget(image_widget)
 
