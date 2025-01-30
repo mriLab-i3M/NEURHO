@@ -7,11 +7,16 @@ import positioning.hw_positioning as hwp
 from PyQt5.QtWidgets import QGroupBox, QSizePolicy, QLabel, QLineEdit, QPushButton, QGridLayout, QApplication, \
     QHBoxLayout
 
+from symetrie.bora import Bora
+
 
 class WidgetManualControl(QGroupBox):
     def __init__(self, main):
         super().__init__("Manual Control")
         self.main = main
+
+        # Connect to Bora
+        bora = Bora()
 
         # Set size policy
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -161,6 +166,8 @@ class WidgetManualControl(QGroupBox):
         thread.start()
 
     def move_FUS(self, displacement=None):
+        bora_movement = (0, 0, 0, 0, 0)
+
         # TODO: This method will start the movement of the robot.
         print("ERROR: Robot movement pending of firmware acquisition...")
         pass
