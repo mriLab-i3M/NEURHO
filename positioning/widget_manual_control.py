@@ -1,6 +1,7 @@
 import threading
 
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 import positioning.hw_positioning as hwp
 
@@ -16,7 +17,7 @@ class WidgetManualControl(QGroupBox):
         self.main = main
 
         # Connect to Bora
-        bora = Bora()
+        self.bora = Bora()
 
         # Set size policy
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -32,7 +33,7 @@ class WidgetManualControl(QGroupBox):
         self.positions_hex = []  # Store positions of hexapod
 
         # Labels for coordinates
-        labels_text = ["X0 (mm)", "Y0 (mm)", "Z0 (mm)", "Phi (deg)", "Theta (deg)"]
+        labels_text = ["X0 (mm)", "Y0 (mm)", "Z0 (mm)", "Rx (deg)", "Ry (deg)", "Rz (deg)"]
 
         # Layout for the widget
         layout = QGridLayout()
@@ -100,12 +101,32 @@ class WidgetManualControl(QGroupBox):
             line_edit.textChanged.connect(self.t_ima_edits_changed)
 
         # Set initial values
-        self.o_ima_edits[-1].setPlaceholderText("90")
-        self.t_ima_edits[-1].setPlaceholderText("90")
         self.o_ima_edits_changed()
         self.t_ima_edits_changed()
 
     def get_position(self, point=None):
+
+        def get_z_axis_from_euler(euler_angles, convention='zyx', degrees=True):
+            """
+            Computes the new z-axis after applying the given Euler angles.
+
+            Parameters:
+            - euler_angles: List or array of [alpha, beta, gamma] in degrees or radians.
+            - convention: Rotation convention (default is 'zyx').
+            - degrees: Boolean, True if angles are in degrees.
+
+            Returns:
+            - z_new: The transformed z-axis as a unit vector.
+            """
+            # Convert Euler angles to rotation matrix
+            rotation = Rotation.from_euler(convention, euler_angles, degrees=degrees)
+            R_matrix = rotation.as_matrix()
+
+            # Extract the third column (new z-axis)
+            z_new = R_matrix[:, 2]
+
+            return z_new
+
         # Get coordinates at image
         r_ima = []
         if point == 'origin':
@@ -125,11 +146,13 @@ class WidgetManualControl(QGroupBox):
             return False
 
         # Calculate hexapod coordinates
-        r_hex = [r_ima[0] - hwp.length * np.cos(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180),
-                 r_ima[1] - hwp.length * np.sin(r_ima[3] * np.pi / 180) * np.sin(r_ima[4] * np.pi / 180),
-                 r_ima[2] - hwp.length * np.cos(r_ima[4] * np.pi / 180),
+        z_axis = get_z_axis_from_euler(r_ima[3:])
+        r_hex = [r_ima[0] - hwp.length * z_axis[0],
+                 r_ima[1] - hwp.length * z_axis[1],
+                 r_ima[2] - hwp.length * z_axis[2],
                  r_ima[3],
-                 r_ima[4]]
+                 r_ima[4],
+                 r_ima[5]]
 
         return r_ima, r_hex
 
@@ -185,7 +208,7 @@ class WidgetManualControl(QGroupBox):
         self.set_position(point='origin', coordinates=r_ima_target)
 
         # Print the movement for debugging purposes
-        label_text = ["X0", "Y0", "Z0", "Phi", "Theta"]
+        label_text = ["X0", "Y0", "Z0", "Rx", "Ry", "Rz"]
         for ii, label in enumerate(label_text):
             print("Movement in %s: %.1f %s" % (label, deltas[ii], 'mm' if ii < 3 else 'deg'))
 

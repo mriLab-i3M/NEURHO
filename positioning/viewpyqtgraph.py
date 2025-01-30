@@ -22,6 +22,7 @@ class ExploradorCortes3D(QWidget):
 
         # Inicialización de variables
         self.puntos = []
+        self.puntos_real = []
         self.selected_point = None
         self.dragging = False
 
@@ -34,6 +35,38 @@ class ExploradorCortes3D(QWidget):
 
         # Establecer el estilo de Matplotlib
         style.use('dark_background')  # Esto aplica un fondo oscuro y colores claros en los gráficos
+
+    def pixel2coord(self, pixel):
+        """
+        Converts pixel coordinates to real-world coordinates based on resolution
+        and axis orientation.
+
+        Parameters:
+        pixel (tuple or list): A 3-element iterable representing the pixel coordinates
+                               (slice, px, py) in the image matrix.
+
+        Returns:
+        list: A 3-element list representing the real-world coordinates (x, y, z).
+
+        Note:
+        - `self.datos_mat['resolution']` should be a list or tuple containing the
+          voxel size in readout, phase and slice directions.
+        - `self.datos_mat['axesOrientation']` should define the mapping between
+          pixel indices and coordinate system axes.
+
+        Example:
+        If resolution is [0.5, 0.5, 1.0] and axesOrientation is [2, 0, 1], then:
+            pixel2coord([10, 20, 30]) -> [15.0, 10.0, 10.0]
+        """
+        resolution = self.datos_mat['resolution'][0]
+        axes = self.datos_mat['axesOrientation'][0]
+        nsl, nph, nrd = self.imagen.shape
+        coord = [0.0, 0.0, 0.0]
+        coord[axes[2]] = (pixel[0] - nsl / 2) * resolution[2]  # slice
+        coord[axes[0]] = (pixel[1] - nrd / 2) * resolution[0]  # readout
+        coord[axes[1]] = (pixel[2] - nph / 2) * resolution[1]  # phase
+
+        return coord
 
     def initUI(self):
         self.setWindowTitle('Explorador de Cortes 3D')
@@ -219,6 +252,7 @@ class ExploradorCortes3D(QWidget):
     def agregar_punto(self, corte, x, y):
         """Agrega un nuevo punto a la lista y lo dibuja en la imagen."""
         self.puntos.append([corte, x, y, 'yo'])
+        self.puntos_real.append(self.pixel2coord([corte, x, y]))
         self.lista_coordenadas.addItem(f'Corte: {corte}, X: {x}, Y: {y}')
 
     def actualizar_coordenadas(self):
@@ -262,13 +296,16 @@ class ExploradorCortes3D(QWidget):
             y = int(partes[2].split(':')[1].strip())
 
             punto_a_eliminar = None
+            n = 0
             for punto in self.puntos:
                 if punto[0] == corte and punto[1] == x and punto[2] == y:
                     punto_a_eliminar = punto
                     break
+                n += 1
 
             if punto_a_eliminar:
                 self.puntos.remove(punto_a_eliminar)
+                self.puntos_real.remove(self.puntos_real[n])
                 self.lista_coordenadas.takeItem(self.lista_coordenadas.row(item))
                 self.actualizar_imagen()
 
