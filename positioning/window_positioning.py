@@ -12,9 +12,8 @@ import scipy as sp
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QApplication, QGridLayout
 import qdarkstyle
 from positioning.widget_manual_control import WidgetManualControl
-from positioning.widget_plot3d import Plot3DWidget
 from positioning.widget_figures import FiguresLayoutWidget
-from positioning.viewpyqtgraph import mainpyqtgraph
+from positioning.viewpyqtgraph import ExploradorCortes3D
 
 
 class PositioningWindow(QWidget):
@@ -85,9 +84,9 @@ class PositioningWindow(QWidget):
         image, x_label, y_label, title = self.fixImage(image, axes)
 
         # Create the plot widget and add it to the figures_layout
-        image_widget = mainpyqtgraph('RAREprotocols_T1_SAG_Right.2023.10.24.19.28.37.989.mat')
+        self.image_widget = ExploradorCortes3D('RAREprotocols_T1_SAG_Right.2023.10.24.19.28.37.989.mat')
         self.figures_layout.clear_figures_layout()
-        self.figures_layout.addWidget(image_widget)
+        self.figures_layout.addWidget(self.image_widget)
 
     def fixImage(self, matrix3d, axes=None):
         matrix = copy.copy(matrix3d)

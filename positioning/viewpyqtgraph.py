@@ -2,12 +2,13 @@ import numpy as np
 import scipy.io as sp
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QHBoxLayout, QListWidget, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QHBoxLayout, QListWidget, QPushButton, QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from matplotlib.backend_bases import MouseEvent
 import qdarkstyle
 from matplotlib import style
+import sys
 
 
 class ExploradorCortes3D(QWidget):
@@ -251,9 +252,10 @@ class ExploradorCortes3D(QWidget):
 
     def agregar_punto(self, corte, x, y):
         """Agrega un nuevo punto a la lista y lo dibuja en la imagen."""
-        self.puntos.append([corte, x, y, 'yo'])
-        self.puntos_real.append(self.pixel2coord([corte, x, y]))
-        self.lista_coordenadas.addItem(f'Corte: {corte}, X: {x}, Y: {y}')
+        if len(self.puntos) < 3:
+            self.puntos.append([corte, x, y, 'yo'])
+            self.puntos_real.append(self.pixel2coord([corte, x, y]))
+            self.lista_coordenadas.addItem(f'Corte: {corte}, X: {x}, Y: {y}')
 
     def actualizar_coordenadas(self):
         """Actualiza las coordenadas del punto movido en el ListBox."""
@@ -261,6 +263,8 @@ class ExploradorCortes3D(QWidget):
             if punto == self.selected_point:
                 item = self.lista_coordenadas.item(i)
                 item.setText(f'Corte: {punto[0]}, X: {punto[1]}, Y: {punto[2]}')
+                self.puntos[i][0:3] = punto[0:3]
+                self.puntos_real[i] = self.pixel2coord([punto[0], punto[1], punto[2]])
 
     def mostrar_punto_seleccionado(self):
         """Muestra el punto seleccionado del ListBox en la imagen."""
@@ -342,16 +346,8 @@ class ExploradorCortes3D(QWidget):
             self.lista_coordenadas.addItem(f'Corte: {punto[0]}, X: {punto[1]}, Y: {punto[2]}')
 
 
-def mainpyqtgraph(ruta_archivo):
-    """ Devuelve el widget del explorador de cortes 3D para agregarlo a una pestaña. """
-    explorador = ExploradorCortes3D(ruta_archivo)
-
-    # Crear un layout y agregar el explorador de cortes
-    layout = QVBoxLayout()
-    layout.addWidget(explorador)  # Agregar el explorador a la pestaña
-
-    # Crear un widget para encapsular el layout
-    widget = QWidget()
-    widget.setLayout(layout)
-
-    return widget
+if __name__=="__main__":
+    app = QApplication(sys.argv)
+    window = ExploradorCortes3D('RAREprotocols_T1_SAG_Right.2023.10.24.19.28.37.989.mat')
+    window.show()
+    sys.exit(app.exec_())

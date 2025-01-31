@@ -1,4 +1,5 @@
 import threading
+import sys
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -85,6 +86,9 @@ class WidgetManualControl(QGroupBox):
         self.button_go_back = QPushButton("Go Back")
         buttons_layout.addWidget(self.button_go_back)
 
+        self.button_position = QPushButton("Get Position")
+        buttons_layout.addWidget(self.button_position)
+
         # Set the layout
         self.setLayout(layout)
 
@@ -92,6 +96,7 @@ class WidgetManualControl(QGroupBox):
         self.button_go.clicked.connect(self.go_clicked)
         self.button_home.clicked.connect(self.home_clicked)
         self.button_go_back.clicked.connect(self.go_back_clicked)
+        self.button_position.clicked.connect(self.get_position_clicked)
 
         # Connect the QLineEdit to their handlers
         for line_edit in self.o_ima_edits:
@@ -103,6 +108,71 @@ class WidgetManualControl(QGroupBox):
         # Set initial values
         self.o_ima_edits_changed()
         self.t_ima_edits_changed()
+
+    def get_position_clicked(self):
+
+        def get_center(points):
+            """
+            Computes the centroid of three 3D points.
+
+            Parameters:
+            points (list of tuples/lists): A list containing three points, where each
+                                            point is a tuple or list of three coordinates (x, y, z).
+
+            Returns:
+            tuple: The centroid (center) of the three points as (x, y, z).
+            """
+            if len(points) != 3:
+                raise ValueError("Exactly three points are required")
+
+            x_center = sum(p[0] for p in points) / 3
+            y_center = sum(p[1] for p in points) / 3
+            z_center = sum(p[2] for p in points) / 3
+
+            return (x_center, y_center, z_center)
+
+        def compute_euler_angles(A, B, C):
+            # Step 1: Compute vectors defining the plane
+            v1 = B - A
+            v2 = C - A
+
+            # Step 2: Compute the new z' axis (normal to the plane)
+            z_new = np.cross(v1, v2)
+            z_new = z_new / np.linalg.norm(z_new)  # Normalize
+
+            # Step 3: Define new x' axis (aligned with v1)
+            x_new = v1 / np.linalg.norm(v1)
+
+            # Step 4: Compute new y' axis (perpendicular to x' and z')
+            y_new = np.cross(z_new, x_new)
+            y_new = y_new / np.linalg.norm(y_new)  # Normalize
+
+            # Step 5: Construct the rotation matrix
+            R_matrix = np.column_stack((x_new, y_new, z_new))
+
+            # Step 6: Convert rotation matrix to Euler angles (ZYX convention)
+            euler_angles = Rotation.from_matrix(R_matrix).as_euler('xyz', degrees=True)
+
+            return euler_angles
+
+        points = self.main.image_widget.puntos_real
+
+        if len(points) != 3:
+            print("You need 3 points to get the coordinates")
+        else:
+            centroid = get_center(points)
+            euler_angles = compute_euler_angles(np.array(points[0]), np.array(points[1]), np.array(points[2]))
+
+        # Update the QTextEdits
+        coord = [centroid[0] * 1e3, centroid[1] * 1e3, centroid[2] * 1e3, euler_angles[0], euler_angles[1], euler_angles[2]]
+        n = 0
+        for edit in self.o_ima_edits:
+            edit.setText("%0.1f" % coord[n])
+            n += 1
+
+        print(centroid)
+        print(euler_angles)
+
 
     def get_position(self, point=None):
 
@@ -246,8 +316,6 @@ class WidgetManualControl(QGroupBox):
 
 
 if __name__ == "__main__":
-    import sys
-
     app = QApplication(sys.argv)
     window = WidgetManualControl(None)
     window.show()
