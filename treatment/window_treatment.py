@@ -41,7 +41,7 @@ Datasheet parameters:
 """
 
 # UI DEBUG: App Debugging. Connection to PicoScope avoided when UI_DEBUG = True
-UI_DEBUG = True
+UI_DEBUG = False
 
 # DATASHEET CONSTANTS
 VPEAKMAX = 2.0
@@ -64,8 +64,8 @@ from scipy import signal, special
 import ctypes
 import time
 if (not UI_DEBUG):
-    from picosdk import ps5000a as ps
-    from picosdk import assert_pico_ok
+    from picosdk.ps5000a import ps5000a as ps
+    from picosdk.functions import assert_pico_ok
 
 class MyApp(QWidget):
     def __init__(self, main=None):
