@@ -151,28 +151,30 @@ class WidgetManualControl(QGroupBox):
             R_matrix = np.column_stack((x_new, y_new, z_new))
 
             # Step 6: Convert rotation matrix to Euler angles (ZYX convention)
-            euler_angles = Rotation.from_matrix(R_matrix).as_euler('xyz', degrees=True)
+            euler_angles = Rotation.from_matrix(R_matrix).as_euler('zyx', degrees=True)
 
             return euler_angles
 
-        points = self.main.image_widget.puntos_real
+        points_mri = self.main.image_widget.puntos_real
 
-        if len(points) != 3:
+        if len(points_mri) != 3:
             print("You need 3 points to get the coordinates")
         else:
-            centroid = get_center(points)
-            euler_angles = compute_euler_angles(np.array(points[0]), np.array(points[1]), np.array(points[2]))
+            points_bora = []
+            for ii in range(3):
+                points_bora.append([points_mri[ii][1], points_mri[ii][2], points_mri[ii][0]])
 
-        # Update the QTextEdits
-        coord = [centroid[0] * 1e3, centroid[1] * 1e3, centroid[2] * 1e3, euler_angles[0], euler_angles[1], euler_angles[2]]
-        n = 0
-        for edit in self.o_ima_edits:
-            edit.setText("%0.1f" % coord[n])
-            n += 1
+            centroid = get_center(points_bora)
+            euler_angles = compute_euler_angles(np.array(points_bora[0]),
+                                                np.array(points_bora[1]),
+                                                np.array(points_bora[2]))
 
-        print(centroid)
-        print(euler_angles)
-
+            # Update the QTextEdits
+            coord = [centroid[0] * 1e3, centroid[1] * 1e3, centroid[2] * 1e3, euler_angles[0], euler_angles[1], euler_angles[2]]
+            n = 0
+            for edit in self.o_ima_edits:
+                edit.setText("%0.1f" % coord[n])
+                n += 1
 
     def get_position(self, point=None):
 
@@ -197,6 +199,32 @@ class WidgetManualControl(QGroupBox):
 
             return z_new
 
+        def compute_hexapod_position(P_top, euler_angles, L, convention='zyx', degrees=True):
+            """
+            Computes the hexapod base position given the top position, Euler angles, and pole length.
+
+            Parameters:
+            - P_top: np.array([x, y, z]) -> Position of the top of the pole in global coordinates.
+            - euler_angles: List or np.array([alpha, beta, gamma]) -> Euler angles in degrees or radians.
+            - L: float -> Length of the pole.
+            - convention: Rotation convention (default 'zyx').
+            - degrees: Boolean, True if angles are in degrees.
+
+            Returns:
+            - P_hexapod: np.array([x, y, z]) -> Position of the hexapod base in global coordinates.
+            """
+            # Compute rotation matrix from Euler angles
+            rotation = Rotation.from_euler(convention, euler_angles, degrees=degrees)
+            R_matrix = rotation.as_matrix()
+
+            # Extract the new z-axis direction (third column of R)
+            z_new = R_matrix[:, 2]
+
+            # Compute the hexapod base position
+            P_hexapod = P_top - L * z_new
+
+            return P_hexapod
+
         # Get coordinates at image
         r_ima = []
         if point == 'origin':
@@ -215,16 +243,54 @@ class WidgetManualControl(QGroupBox):
             print("point parameter not found")
             return False
 
+        # # Calculate hexapod coordinates
+        # r_hex = [r_ima[0] - hwp.length * r_ima[3],
+        #          r_ima[1] - hwp.length * r_ima[4],
+        #          r_ima[2] - hwp.length * r_ima[5],
+        #          r_ima[3],
+        #          r_ima[4],
+        #          r_ima[5]]
+
         # Calculate hexapod coordinates
-        z_axis = get_z_axis_from_euler(r_ima[3:])
-        r_hex = [r_ima[0] - hwp.length * z_axis[0],
-                 r_ima[1] - hwp.length * z_axis[1],
-                 r_ima[2] - hwp.length * z_axis[2],
-                 r_ima[3],
-                 r_ima[4],
-                 r_ima[5]]
+        r_hex = list(compute_hexapod_position(np.array(r_ima[:3]), r_ima[3:], hwp.length))
+        r_hex.append(r_ima[3])
+        r_hex.append(r_ima[4])
+        r_hex.append(r_ima[5])
 
         return r_ima, r_hex
+
+    def prov(self):
+        def compute_hexapod_position(P_top, euler_angles, L, convention='zyx', degrees=True):
+            """
+            Computes the hexapod base position given the top position, Euler angles, and pole length.
+
+            Parameters:
+            - P_top: np.array([x, y, z]) -> Position of the top of the pole in global coordinates.
+            - euler_angles: List or np.array([alpha, beta, gamma]) -> Euler angles in degrees or radians.
+            - L: float -> Length of the pole.
+            - convention: Rotation convention (default 'zyx').
+            - degrees: Boolean, True if angles are in degrees.
+
+            Returns:
+            - P_hexapod: np.array([x, y, z]) -> Position of the hexapod base in global coordinates.
+            """
+            # Compute rotation matrix from Euler angles
+            rotation = Rotation.from_euler(convention, euler_angles, degrees=degrees)
+            R_matrix = rotation.as_matrix()
+
+            # Extract the new z-axis direction (third column of R)
+            z_new = R_matrix[:, 2]
+
+            # Compute the hexapod base position
+            P_hexapod = P_top - L * z_new
+
+            return P_hexapod
+
+        # Calculate hexapod coordinates
+        r_hex = list(compute_hexapod_position(np.array(r_ima[:3]), r_ima[3:], hwp.length))
+        r_hex.append(r_ima[3])
+        r_hex.append(r_ima[4])
+        r_hex.append(r_ima[5])
 
     def set_position(self, point=None, coordinates=None):
         if point == 'origin':
