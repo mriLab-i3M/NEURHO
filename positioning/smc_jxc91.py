@@ -1,15 +1,16 @@
 from pycomm3 import CIPDriver, Services, INT
 import time
 import configs.hw_config as hw
+import threading
 
 
-class actuador_smc():
+class actuator_smc():
 
     def __init__(self, axis='x'):
         self.config = {}
 
         # Configure SMC
-        self.configure_smc()
+        self.configure_smc(axis=axis)
 
         print("Starting pycomm3 CIPDriver demo application...")
         print("Listing device identity...")
@@ -29,6 +30,7 @@ class actuador_smc():
             print("Connection sucessfull!")
         else:
             print("ERROR: Cannot connect to device!")
+        self.reset_alarm()
 
     def configure_smc(self, axis='x'):
         if axis == 'x':
@@ -69,13 +71,6 @@ class actuador_smc():
             unconnected_send=False,
             route_path=True
         )
-        '''resp=self.escuchar()
-        print(resp)
-        word0=resp[:4]
-        while word0[3]!='e':
-            resp=self.escuchar()
-            word0=resp[:4]'''
-        # time.sleep(1.5)#1.5
 
     def conversor_pos(self, pos_mm):
         new_pos = float(pos_mm) * 100
@@ -94,19 +89,6 @@ class actuador_smc():
 
     def move(self, data_str, data_start):
         print("Sending Move command...")
-
-        '''self.driver.generic_message(
-                service=Services.set_attribute_single,
-                class_code=b'\x04',
-                instance=b'\x96',
-                attribute=b'\x03',
-                request_data=bytes.fromhex(data_str),
-                connected=True,
-                unconnected_send=False,
-                route_path=True
-            )
-        time.sleep(1)#1   #Si bajas de 1 va mal porque se salta la posición anterior'''
-        print('Moviendo')
         self.driver.generic_message(
             service=Services.set_attribute_single,
             class_code=b'\x04',
@@ -117,10 +99,7 @@ class actuador_smc():
             unconnected_send=False,
             route_path=True
         )
-        # 10
-        # time.sleep(1)#1
         resp = self.escuchar()
-        print(resp)
         word0 = resp[:4]
         if int(word0[2]) >= 8:  # Indica alarma activada
             print('WARNING: Alarm.')
@@ -148,7 +127,6 @@ class actuador_smc():
     def reset_alarm(self):
         print("Sending Reset command...")
         data_reset = '000af0ff000100000000000000000000000000000a006400000000000000000032000000'
-        # data_str = "000000000000000000000000000000000000000000000000000000000000000000000000"
         self.driver.generic_message(
             service=Services.set_attribute_single,
             class_code=b'\x04',
@@ -164,7 +142,6 @@ class actuador_smc():
         self.home_mm()
 
     def escuchar(self):
-        print('Escuchando')
         data_recv = self.driver.generic_message(
             service=Services.get_attribute_single,
             class_code=b'\x04',
@@ -179,35 +156,66 @@ class actuador_smc():
         return respuesta
 
     def move_mm(self, position):
-        position = str(position - self.config['zero'])
-
-        # Power on the actuator
-        self.powerOn()
-        time.sleep(1)
+        position = str(position + self.config['zero'])
 
         # Miscellaneous
         w01 = '0002f0ff'
         w2 = '0001'
         w2_start = '0101'
-        speed = '9600'
+        speed = '1000'
         pos_h, pos_l = self.conversor_pos(position)
-        aceleracion = 'e803'
-        deceleracion = aceleracion
+        acceleration = 'e803'
+        deceleration = 'e803'
         w8_17 = '000000000a006400000000000000000032000000'
-        data_str_start = w01 + w2_start + speed + pos_l + pos_h + aceleracion + deceleracion + w8_17
-        data_str = w01 + w2 + speed + pos_l + pos_h + aceleracion + deceleracion + w8_17
+        data_str_start = w01 + w2_start + speed + pos_l + pos_h + acceleration + deceleration + w8_17
+        data_str = w01 + w2 + speed + pos_l + pos_h + acceleration + deceleration + w8_17
 
         # Move actuator to desired position
         self.move(data_str, data_str_start)
-
-        # Power off the actuator
-        self.powerOff()
 
     def home_mm(self):
         print("Sending Home command...")
         self.move_mm(position=0)
 
+class smc():
+    def __init__(self):
+        # Create a list to hold the threads
+        threads = []
+        self.devices = [None] * 3  # Initialize a list to store devices
+
+        # Create and start a thread for each device initialization
+        for ii, axis in enumerate(['x', 'y', 'z']):
+            thread = threading.Thread(target=self._init_device, args=(ii, axis))
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to finish
+        for thread in threads:
+            thread.join()
+
+    def _init_device(self, index, axis):
+        # This method initializes each device and stores it in the self.devices list
+        self.devices[index] = actuator_smc(axis=axis)
+
+    def move(self, position=None):
+        if position is None:
+            position = [0, 0, 0]
+
+        # Create a list of threads
+        threads = []
+
+        # Create and start a thread for each device movement
+        for ii in range(3):
+            thread = threading.Thread(target=self.devices[ii].move_mm, args=(position[ii],))
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to finish
+        for thread in threads:
+            thread.join()
 
 if __name__ == '__main__':
-    smc_x = actuador_smc(axis='x')
-    smc_x.move_mm(position=10)
+    device = smc()
+    device.move(position=[50, -50, 50])
+    device.move(position=[-50, 50, 40])
+    device.move(position=[0, 0, 0])
