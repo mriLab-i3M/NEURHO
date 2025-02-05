@@ -5,13 +5,15 @@ import configs.hw_config as hw
 
 class actuador_smc():
 
-    def __init__(self, ip_address):
-        SMC_DRIVER_IP = ip_address
+    def __init__(self, axis='x'):
+        self.config = {}
+
+        # Configure SMC
+        self.configure_smc()
 
         print("Starting pycomm3 CIPDriver demo application...")
-
         print("Listing device identity...")
-        response = CIPDriver.list_identity(SMC_DRIVER_IP)
+        response = CIPDriver.list_identity(self.config['SMC_DRIVER_IP'])
         print("IP Address: {}".format(response['ip_address']))
         print("Vendor: {}".format(response['vendor']))
         print("Product Type: {}".format(response['product_type']))
@@ -20,14 +22,24 @@ class actuador_smc():
         print("Serial: {}".format(response['serial']))
         print("Product Name: {}".format(response['product_name']))
 
-        self.driver = CIPDriver(SMC_DRIVER_IP)
-        print("Opening connection to {}...".format(SMC_DRIVER_IP))
+        self.driver = CIPDriver(self.config['SMC_DRIVER_IP'])
+        print("Opening connection to {}...".format(self.config['SMC_DRIVER_IP']))
         self.driver.open()
-        if (self.driver.connected):
+        if self.driver.connected:
             print("Connection sucessfull!")
         else:
             print("ERROR: Cannot connect to device!")
-            exit
+
+    def configure_smc(self, axis='x'):
+        if axis == 'x':
+            self.config['SMC_DRIVER_IP'] = hw.smc_ip_x
+            self.config['zero'] = hw.smc_zero_x
+        elif axis == 'y':
+            self.config['SMC_DRIVER_IP'] = hw.smc_ip_y
+            self.config['zero'] = hw.smc_zero_y
+        elif axis == 'z':
+            self.config['SMC_DRIVER_IP'] = hw.smc_ip_z
+            self.config['zero'] = hw.smc_zero_z
 
     def powerOn(self):
         print("Sending PowerOn command...")
@@ -111,14 +123,11 @@ class actuador_smc():
         print(resp)
         word0 = resp[:4]
         if int(word0[2]) >= 8:  # Indica alarma activada
-            print('Hay una alarma')
+            print('WARNING: Alarm.')
             self.reset_alarm()
-            posicion = input('posición(mm):')
         while word0[3] != 'e':
             resp = self.escuchar()
             word0 = resp[:4]
-        # posicion=input('posición(mm):')
-        # time.sleep(1)#1
 
     def powerOff(self):
         print("Sending PowerOff command...")
@@ -152,7 +161,7 @@ class actuador_smc():
         )
         time.sleep(1)  # 1
         self.powerOn()
-        self.home()
+        self.home_mm()
 
     def escuchar(self):
         print('Escuchando')
@@ -169,32 +178,36 @@ class actuador_smc():
         respuesta = data_recv[1].hex()
         return respuesta
 
+    def move_mm(self, position):
+        position = str(position - self.config['zero'])
 
-if __name__ == '__main__':
-    # Programa principal
-    actuador = actuador_smc(ip_address=hw.smc_ip_x)
-    # actuador.__init__()
-    actuador.powerOn()
-    time.sleep(1)
-    actuador.home()
-    posicion = input('posición (mm):')
-    # speed=input()
-    while (posicion != 'apagar'):
+        # Power on the actuator
+        self.powerOn()
+        time.sleep(1)
+
+        # Miscellaneous
         w01 = '0002f0ff'
         w2 = '0001'
         w2_start = '0101'
         speed = '9600'
-        if float(posicion) > 200:
-            posicion = '200'
-        elif float(posicion) < 0:
-            posicion = '0'
-        pos_h, pos_l = actuador.conversor_pos(posicion)
+        pos_h, pos_l = self.conversor_pos(position)
         aceleracion = 'e803'
         deceleracion = aceleracion
         w8_17 = '000000000a006400000000000000000032000000'
         data_str_start = w01 + w2_start + speed + pos_l + pos_h + aceleracion + deceleracion + w8_17
         data_str = w01 + w2 + speed + pos_l + pos_h + aceleracion + deceleracion + w8_17
-        actuador.move(data_str, data_str_start)
-        posicion = input('posición (mm):')
 
-    actuador.powerOff()
+        # Move actuator to desired position
+        self.move(data_str, data_str_start)
+
+        # Power off the actuator
+        self.powerOff()
+
+    def home_mm(self):
+        print("Sending Home command...")
+        self.move_mm(position=0)
+
+
+if __name__ == '__main__':
+    smc_x = actuador_smc(axis='x')
+    smc_x.move_mm(position=10)
