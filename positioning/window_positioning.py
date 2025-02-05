@@ -38,12 +38,6 @@ class PositioningWindow(QWidget):
         layout_main.addLayout(layout_toolbars)
         layout_main.addLayout(self.layout_widgets)
 
-        ############## toolbars ###################
-
-        # TODO: Include toolbars
-
-        ################# layout_qwidget #####################
-
         # Add manual control widget
         self.manual_control_widget = WidgetManualControl(main=self)
         self.layout_left.addWidget(self.manual_control_widget)

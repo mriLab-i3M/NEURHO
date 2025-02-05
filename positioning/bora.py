@@ -53,7 +53,7 @@ class Bora(paramiko.SSHClient):  # Inherit from paramiko.SSHClient.
             except:
                 print("No connection...")
                 n += 1
-            if n == 5:
+            if n == 1:
                 break
 
         if self.ssh_ready:
@@ -215,9 +215,9 @@ class Bora(paramiko.SSHClient):  # Inherit from paramiko.SSHClient.
             time.sleep(self.timeout)
             self.wait_to_finish()
             print("READY: Movement ready!")
-
-        return True
-
+            return True
+        else:
+            return False
 
 if __name__ == "__main__":
     # Example usage of the Bora class
