@@ -7,24 +7,25 @@ import threading
 class actuator_smc():
 
     def __init__(self, axis='x'):
+        self.axis = axis
         self.config = {}
 
         # Configure SMC
-        self.configure_smc(axis=axis)
+        self.configure_smc()
 
-        print("Starting pycomm3 CIPDriver demo application...")
-        print("Listing device identity...")
+        # Connect to smc driver
+        print(f"Connecting to smc {axis}...")
         response = CIPDriver.list_identity(self.config['SMC_DRIVER_IP'])
-        print("IP Address: {}".format(response['ip_address']))
-        print("Vendor: {}".format(response['vendor']))
-        print("Product Type: {}".format(response['product_type']))
-        print("Product Code: {}".format(response['product_code']))
-        print("Revision: {}.{}".format(response['revision']['major'], response['revision']['minor']))
-        print("Serial: {}".format(response['serial']))
-        print("Product Name: {}".format(response['product_name']))
+        # print("IP Address: {}".format(response['ip_address']))
+        # print("Vendor: {}".format(response['vendor']))
+        # print("Product Type: {}".format(response['product_type']))
+        # print("Product Code: {}".format(response['product_code']))
+        # print("Revision: {}.{}".format(response['revision']['major'], response['revision']['minor']))
+        # print("Serial: {}".format(response['serial']))
+        # print("Product Name: {}".format(response['product_name']))
 
         self.driver = CIPDriver(self.config['SMC_DRIVER_IP'])
-        print("Opening connection to {}...".format(self.config['SMC_DRIVER_IP']))
+        # print("Opening connection to {}...".format(self.config['SMC_DRIVER_IP']))
         self.driver.open()
         if self.driver.connected:
             print("Connection sucessfull!")
@@ -32,19 +33,18 @@ class actuator_smc():
             print("ERROR: Cannot connect to device!")
         self.reset_alarm()
 
-    def configure_smc(self, axis='x'):
-        if axis == 'x':
+    def configure_smc(self):
+        if self.axis == 'x':
             self.config['SMC_DRIVER_IP'] = hw.smc_ip_x
             self.config['zero'] = hw.smc_zero_x
-        elif axis == 'y':
+        elif self.axis == 'y':
             self.config['SMC_DRIVER_IP'] = hw.smc_ip_y
             self.config['zero'] = hw.smc_zero_y
-        elif axis == 'z':
+        elif self.axis == 'z':
             self.config['SMC_DRIVER_IP'] = hw.smc_ip_z
             self.config['zero'] = hw.smc_zero_z
 
     def powerOn(self):
-        print("Sending PowerOn command...")
         data_str = "000200000000000000000000000000000000000000000000000000000000000000000000"
         self.driver.generic_message(
             service=Services.set_attribute_single,
@@ -59,7 +59,6 @@ class actuator_smc():
         time.sleep(1.5)  # 1 #Tiene que estar si o si
 
     def home(self):
-        print("Sending StartHoming command...")
         data_str = "001200000000000000000000000000000000000000000000000000000000000000000000"
         self.driver.generic_message(
             service=Services.set_attribute_single,
@@ -87,8 +86,7 @@ class actuator_smc():
         pos_l = pos_l[l // 4:] + pos_l[:l // 4]
         return pos_h, pos_l
 
-    def move(self, data_str, data_start):
-        print("Sending Move command...")
+    def move(self, data_start):
         self.driver.generic_message(
             service=Services.set_attribute_single,
             class_code=b'\x04',
@@ -109,8 +107,7 @@ class actuator_smc():
             word0 = resp[:4]
 
     def powerOff(self):
-        print("Sending PowerOff command...")
-        data_str = "000000000000000000000000000000000000000000000000000000000000000000000000"
+        data_str = "004000000000000000000000000000000000000000000000000000000000000000000000"
         self.driver.generic_message(
             service=Services.set_attribute_single,
             class_code=b'\x04',
@@ -121,25 +118,27 @@ class actuator_smc():
             unconnected_send=False,
             route_path=True
         )
-        print("Closing connection...")
         self.driver.close()
 
     def reset_alarm(self):
         print("Sending Reset command...")
         data_reset = '000af0ff000100000000000000000000000000000a006400000000000000000032000000'
-        self.driver.generic_message(
-            service=Services.set_attribute_single,
-            class_code=b'\x04',
-            instance=b'\x96',
-            attribute=b'\x03',
-            request_data=bytes.fromhex(data_reset),
-            connected=True,
-            unconnected_send=False,
-            route_path=True
-        )
-        time.sleep(1)  # 1
-        self.powerOn()
-        self.home_mm()
+        try:
+            self.driver.generic_message(
+                service=Services.set_attribute_single,
+                class_code=b'\x04',
+                instance=b'\x96',
+                attribute=b'\x03',
+                request_data=bytes.fromhex(data_reset),
+                connected=True,
+                unconnected_send=False,
+                route_path=True
+            )
+            time.sleep(1)  # 1
+            self.powerOn()
+            self.home_mm()
+        except:
+            print(f"Error while reset alarm in {self.axis}")
 
     def escuchar(self):
         data_recv = self.driver.generic_message(
@@ -158,20 +157,31 @@ class actuator_smc():
     def move_mm(self, position):
         position = str(position + self.config['zero'])
 
-        # Miscellaneous
-        w01 = '0002f0ff'
-        w2 = '0001'
-        w2_start = '0101'
-        speed = '1000'
-        pos_h, pos_l = self.conversor_pos(position)
-        acceleration = 'e803'
-        deceleration = 'e803'
-        w8_17 = '000000000a006400000000000000000032000000'
-        data_str_start = w01 + w2_start + speed + pos_l + pos_h + acceleration + deceleration + w8_17
-        data_str = w01 + w2 + speed + pos_l + pos_h + acceleration + deceleration + w8_17
+        # Words according to Manual, Chapter 9: Memory Map, Output Area Mapping
+        w00_port = '0002'
+        w01_control = 'f0ff'
+        w02_mode = '0101'
+        w03_speed = '1000'
+        w05_pos_h, w04_pos_l = self.conversor_pos(position)
+        w06_acceleration = 'e803'
+        w07_deceleration = 'e803'
+        w08_pushing_force = '0000'
+        w09_trigger_lv = '0000'
+        w10_pushing_speed = '0a00'
+        w11_moving_force = '6400'
+        w12_area1_ld = '0000'
+        w13_area1_ud = '0000'
+        w14_area2_ld = '0000'
+        w15_area2_up = '0000'
+        w16_in_position_ld = '3200'
+        w17_in_position_ld = '0000'
+        data_str = (w00_port + w01_control + w02_mode + w03_speed + w04_pos_l + w05_pos_h + w06_acceleration +
+                    w07_deceleration + w08_pushing_force + w09_trigger_lv + w10_pushing_speed + w11_moving_force +
+                    w12_area1_ld + w13_area1_ud + w14_area2_ld + w15_area2_up + w16_in_position_ld +
+                    w17_in_position_ld)
 
         # Move actuator to desired position
-        self.move(data_str, data_str_start)
+        self.move(data_str)
 
     def home_mm(self):
         print("Sending Home command...")
@@ -205,7 +215,7 @@ class smc():
         threads = []
 
         # Create and start a thread for each device movement
-        for ii in range(3):
+        for ii in range(len(self.devices)):
             thread = threading.Thread(target=self.devices[ii].move_mm, args=(position[ii],))
             threads.append(thread)
             thread.start()
@@ -213,6 +223,8 @@ class smc():
         # Wait for all threads to finish
         for thread in threads:
             thread.join()
+
+        return True
 
 if __name__ == '__main__':
     device = smc()
