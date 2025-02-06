@@ -220,7 +220,8 @@ class Bora(paramiko.SSHClient):  # Inherit from paramiko.SSHClient.
             return False
 
 if __name__ == "__main__":
+    from positioning.smc_jxc91 import smc
     # Example usage of the Bora class
-    d = Bora()
-    target = (0, 0, 0, 0, 0, 0, 0)  # Define the target position (type, Tx, Ty, Tz, Rx, Ry, Rz)
-    d.move_absolute(target)  # Move to the specified position
+    hexapod = Bora()
+    hexapod.move_absolute((0, 0, 0, 0, 5, 5, 5))  # Move to the specified position
+    hexapod.move_absolute((0, 0, 0, 0, 0, 0, 0))

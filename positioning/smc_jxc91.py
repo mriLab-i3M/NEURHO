@@ -14,23 +14,13 @@ class actuator_smc():
         self.configure_smc()
 
         # Connect to smc driver
-        print(f"Connecting to smc {axis}...")
-        response = CIPDriver.list_identity(self.config['SMC_DRIVER_IP'])
-        # print("IP Address: {}".format(response['ip_address']))
-        # print("Vendor: {}".format(response['vendor']))
-        # print("Product Type: {}".format(response['product_type']))
-        # print("Product Code: {}".format(response['product_code']))
-        # print("Revision: {}.{}".format(response['revision']['major'], response['revision']['minor']))
-        # print("Serial: {}".format(response['serial']))
-        # print("Product Name: {}".format(response['product_name']))
-
+        print(f"Connecting to smc {self.axis}...")
         self.driver = CIPDriver(self.config['SMC_DRIVER_IP'])
-        # print("Opening connection to {}...".format(self.config['SMC_DRIVER_IP']))
         self.driver.open()
         if self.driver.connected:
-            print("Connection sucessfull!")
+            print(f"READY: Connection to smc {self.axis} sucessfull!")
         else:
-            print("ERROR: Cannot connect to device!")
+            print(f"ERROR: Cannot connect to smc {self.axis}!")
         self.reset_alarm()
 
     def configure_smc(self):
@@ -100,14 +90,14 @@ class actuator_smc():
         resp = self.escuchar()
         word0 = resp[:4]
         if int(word0[2]) >= 8:  # Indica alarma activada
-            print('WARNING: Alarm.')
+            print(f'WARNING: Alarm in smc {self.axis}.')
             self.reset_alarm()
         while word0[3] != 'e':
             resp = self.escuchar()
             word0 = resp[:4]
 
     def powerOff(self):
-        data_str = "004000000000000000000000000000000000000000000000000000000000000000000000"
+        data_str = "00400000000000000000000000000000aa00000000000000000000000000000000000000"
         self.driver.generic_message(
             service=Services.set_attribute_single,
             class_code=b'\x04',
@@ -121,7 +111,6 @@ class actuator_smc():
         self.driver.close()
 
     def reset_alarm(self):
-        print("Sending Reset command...")
         data_reset = '000af0ff000100000000000000000000000000000a006400000000000000000032000000'
         try:
             self.driver.generic_message(
@@ -138,7 +127,7 @@ class actuator_smc():
             self.powerOn()
             self.home_mm()
         except:
-            print(f"Error while reset alarm in {self.axis}")
+            print(f"ERROR: reset alarm in {self.axis}")
 
     def escuchar(self):
         data_recv = self.driver.generic_message(
@@ -184,7 +173,6 @@ class actuator_smc():
         self.move(data_str)
 
     def home_mm(self):
-        print("Sending Home command...")
         self.move_mm(position=0)
 
 class smc():
