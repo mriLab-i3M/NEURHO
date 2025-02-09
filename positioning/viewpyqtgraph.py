@@ -33,6 +33,12 @@ class ExploradorCortes3D(QWidget):
         elif np.array_equal(self.ejes, [1, 0, 2]):
             # TODO: fix image orientation
             print("WARNING: Image orientation may be wrong: please use image orientation [0, 1, 2]")
+        elif np.array_equal(self.ejes, [0, 2, 1]):
+            self.imagen = np.transpose(self.imagen, axes=(0, 2, 1))
+            self.imagen = self.imagen[::-1, ::-1, ::-1]
+        elif np.array_equal(self.ejes, [2, 0, 1]):
+            # TODO: fix image orientation
+            print("WARNING: Image orientation may be wrong: please use image orientation [0, 2, 1]")
 
         # Inicialización de variables
         self.puntos = []
@@ -90,6 +96,13 @@ class ExploradorCortes3D(QWidget):
         elif np.array_equal(axes, [1, 0, 2]):
             # TODO: Fix image orientation
             print("WARNING: Image orientation may be wrong: please use image orientation [1, 0, 2]")
+        elif np.array_equal(axes, [0, 2, 1]):  # Coronal
+            coord[axes[2]] = + (pixel[0] - nsl / 2) * resolution[2]  # y-axis
+            coord[axes[1]] = - (pixel[1] - nph / 2) * resolution[1]  # z-axis
+            coord[axes[0]] = - (pixel[2] - nrd / 2) * resolution[0]  # x-axis
+        elif np.array_equal(axes, [1, 0, 2]):
+            # TODO: Fix image orientation
+            print("WARNING: Image orientation may be wrong: please use image orientation [0, 2, 1]")
 
         print(coord)
 
