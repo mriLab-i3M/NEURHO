@@ -211,13 +211,13 @@ class WidgetManualControl(QGroupBox):
 
         """
 
-        def compute_hexapod_position(P_top, euler_angles, convention='zyx', degrees=True):
+        def compute_hexapod_position(P_top, euler_angles, convention='xyz', degrees=True):
             # Compute rotation matrix from Euler angles
             rotation = Rotation.from_euler(convention, euler_angles, degrees=degrees)
             R_matrix = rotation.as_matrix()
 
             # Extract the new z-axis direction (third column of R)
-            x_new = R_matrix[:, 0]
+            x_new = R_matrix[0, :]
 
             # Compute the hexapod base position
             P_hexapod = P_top - hw.pole_length * x_new
@@ -262,7 +262,7 @@ class WidgetManualControl(QGroupBox):
         - np.array: The computed position of the point in global coordinates [x, y, z, alpha, beta, gamma].
         """
 
-        def compute_point_position(P_hexapod, euler_angles, convention='zyx', degrees=True):
+        def compute_point_position(P_hexapod, euler_angles, convention='xyz', degrees=True):
             """
             Computes the position of the top point given the hexapod base position, its Euler angles, and the pole length.
 
@@ -270,7 +270,7 @@ class WidgetManualControl(QGroupBox):
             - P_hexapod (np.array): Position of the hexapod base in global coordinates [x, y, z].
             - euler_angles (list or np.array): Euler angles [alpha, beta, gamma] in degrees or radians.
             - L (float): Length of the pole.
-            - convention (str, optional): Rotation convention (default is 'zyx').
+            - convention (str, optional): Rotation convention (default is 'xyz').
             - degrees (bool, optional): True if angles are in degrees.
 
             Returns:
@@ -310,12 +310,15 @@ class WidgetManualControl(QGroupBox):
             return 0
 
     def o_ima_edits_changed(self):
-        # Get hexapod coordinates
-        _, r_hex = self.get_hex_position('origin')
+        try:
+            # Get hexapod coordinates
+            _, r_hex = self.get_hex_position('origin')
 
-        # Set values to the hexapod coordiante labels
-        for ii in range(len(self.o_hex_labels)):
-            self.o_hex_labels[ii].setText("%.1f" % r_hex[ii])
+            # Set values to the hexapod coordiante labels
+            for ii in range(len(self.o_hex_labels)):
+                self.o_hex_labels[ii].setText("%.1f" % r_hex[ii])
+        except:
+            pass
 
     def t_ima_edits_changed(self):
         # Get hexapod coordinates
