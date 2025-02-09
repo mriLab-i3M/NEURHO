@@ -85,11 +85,13 @@ class ExploradorCortes3D(QWidget):
             print("WARNING: Image orientation may be wrong: please use image orientation [2, 1, 0]")
         elif np.array_equal(axes, [0, 1, 2]):  # Sagittal
             coord[axes[2]] = + (pixel[0] - nsl / 2) * resolution[2]  # z-axis
-            coord[axes[0]] = + (pixel[1] - nrd / 2) * resolution[0]  # y-axis
-            coord[axes[1]] = - (pixel[2] - nph / 2) * resolution[1]  # x-axis
+            coord[axes[1]] = + (pixel[1] - nph / 2) * resolution[1]  # y-axis
+            coord[axes[0]] = - (pixel[2] - nrd / 2) * resolution[0]  # x-axis
         elif np.array_equal(axes, [1, 0, 2]):
             # TODO: Fix image orientation
             print("WARNING: Image orientation may be wrong: please use image orientation [1, 0, 2]")
+
+        print(coord)
 
         return coord
 

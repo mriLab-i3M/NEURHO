@@ -58,7 +58,7 @@ class PositioningWindow(QWidget):
     def fix_console(self):
         self.layout_left.addWidget(self.console)
 
-    def rawDataLoading(self, file_path="../", file_name="RARE_TRA.mat"):
+    def rawDataLoading(self, file_path="../", file_name="RARE_SAG.mat"):
         """
         Load raw data from a .mat file and update the image view widget.
         """
