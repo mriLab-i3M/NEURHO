@@ -97,7 +97,7 @@ class actuator_smc():
             word0 = resp[:4]
 
     def powerOff(self):
-        data_str = "00400000000000000000000000000000aa00000000000000000000000000000000000000"
+        data_str = "000000000000000000000000000000000000000000000000000000000000000000000000"
         self.driver.generic_message(
             service=Services.set_attribute_single,
             class_code=b'\x04',

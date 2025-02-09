@@ -10,19 +10,17 @@ import configs.hw_config as hw
 from PyQt5.QtWidgets import QGroupBox, QSizePolicy, QLabel, QLineEdit, QPushButton, QGridLayout, QApplication, \
     QHBoxLayout
 
-from positioning.bora import Bora
+from positioning.robot import Robot
 
 
 class WidgetManualControl(QGroupBox):
     def __init__(self, main):
         super().__init__("Manual Control")
         self.main = main
+        self.mode = "Absolute"  # "Absolute" or "Relative"
 
-        # Connect to Bora
-        # self.bora = Bora()
-
-        # Connect to SMC
-        # TODO: Connect to SMC
+        # Connect to fus robot
+        self.fus_robot = Robot()
 
         # Set size policy
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -33,7 +31,6 @@ class WidgetManualControl(QGroupBox):
         self.o_hex_labels = []
         self.t_ima_edits = []
         self.t_hex_labels = []
-        self.movements = []  # Store movements
         self.positions_ima = []  # Store positions in image
         self.positions_hex = []  # Store positions of hexapod
 
@@ -247,7 +244,8 @@ class WidgetManualControl(QGroupBox):
 
         return r_ima, r_hex
 
-    def get_fus_position(self, r_hex):
+    @staticmethod
+    def get_fus_position(r_hex):
         """
         Computes the position of a point given the hexapod base position, its Euler angles, and the pole length.
 
@@ -330,86 +328,62 @@ class WidgetManualControl(QGroupBox):
                 self.t_hex_labels[ii].setText("%.1f" % r_hex[ii])
 
     def go_clicked(self):
+        def go_to_absolute():
+            # Get hexapod target coordinates
+            r_ima_target, r_hex_target = self.get_hex_position('target')
+
+            # Fix coordinate system to smc and hexapod
+            movement = [r_hex_target[0],
+                        r_hex_target[1],
+                        r_hex_target[2],
+                        - r_hex_target[5],
+                        + r_hex_target[4],
+                        + r_hex_target[3]]
+
+            # Move the robot
+            if self.fus_robot.move():
+                # Store the positions
+                self.positions_ima.append(r_ima_target)
+                self.positions_hex.append(r_hex_target)
+
+        def go_to_relative():
+            pass
+
+        def go_to():
+            print("Moving FUS...")
+            if self.mode == "Absolute":
+                self.go_to_absolute()
+            elif self.mode == "Relative":
+                self.go_to_relative()
+            print("READY: Movement completed.\n")
+
         thread = threading.Thread(target=self.go_to)
         thread.start()
 
-    def move_fus(self, target=None, origin=None):
-        # Delta angle for hexapod coordinates:
-        d_angle = list(np.array(target[3:]) - np.array(origin[3:]))
-        # Move bora hexapod
-        if self.move_bora(d_angle=d_angle):
-            fus_pos = self.get_fus_position(r_hex=[origin[0], origin[1], origin[2], target[3], target[4], target[5]])
-            self.set_position(point='origin', coordinates=fus_pos)
-        else:
-            print("ERROR: Hexapod displacement failed.")
-            return False
-
-        # Move smc actuators
-        if self.move_smc(list(np.array(target[:3]) - np.array(fus_pos[:3]))):
-            self.set_position(point='origin', coordinates=target)
-        else:
-            print("ERROR: SMC displacement failed")
-            return False
-
-        return True
-
-    def move_bora(self, d_angle=None):
-        if d_angle is None:
-            d_angle = [0.0, 0.0, 0.0]
-
-        return self.bora.move_absolute((0, 0, 0, 0, d_angle[0], d_angle[1], d_angle[2]))
-
-    def move_smc(self, d_position=None):
-        if d_position is None:
-            d_position = [0.0, 0.0, 0.0]
-
-        return False
-
-    def go_to(self):
-        # Get hexapod coordinates and displacement
-        _, r_hex_origin = self.get_hex_position('origin')
-        r_ima_target, r_hex_target = self.get_hex_position('target')
-        deltas = list(np.array(r_hex_target) - np.array(r_hex_origin))
-
-        # Move the robot according to the deltas
-        if self.move_fus(target=r_hex_target, origin=r_hex_origin):
-
-            # Print the movement for debugging purposes
-            label_text = ["X0", "Y0", "Z0", "Rx", "Ry", "Rz"]
-            for ii, label in enumerate(label_text):
-                print("Movement in %s: %.1f %s" % (label, deltas[ii], 'mm' if ii < 3 else 'deg'))
-
-            # Store the deltas in the movements parameter
-            self.movements.append(deltas)
-            self.positions_ima.append(r_ima_target)
-            self.positions_hex.append(r_hex_target)
-
-            print("READY: Movement completed.\n")
-
     def home_clicked(self):
-        thread = threading.Thread(target=self.go_home)
-        thread.start()
+        def go_home():
+            # Set target to Zero
+            self.set_position(point="target", coordinates=[0, 0, 0, 0, 90])
+            self.go_to()
 
-    def go_home(self):
-        # Set target to Zero
-        self.set_position(point="target", coordinates=[0, 0, 0, 0, 90])
-        self.go_to()
+        thread = threading.Thread(target=go_home)
+        thread.start()
 
     def go_back_clicked(self):
-        thread = threading.Thread(target=self.go_back)
+        def go_back():
+            # if len(self.movements) <= 1:
+            #     print("WARNING: No movements to revert.\n")
+            #     return
+
+            # Get the last movement
+            last_position_ima = self.positions_ima[-2]
+
+            # Set target to last position
+            self.set_position(point='target', coordinates=last_position_ima)
+            self.go_to()
+
+        thread = threading.Thread(target=go_back)
         thread.start()
-
-    def go_back(self):
-        if len(self.movements) <= 1:
-            print("WARNING: No movements to revert.\n")
-            return
-
-        # Get the last movement
-        last_position_ima = self.positions_ima[-2]
-
-        # Set target to last position
-        self.set_position(point='target', coordinates=last_position_ima)
-        self.go_to()
 
 
 if __name__ == "__main__":

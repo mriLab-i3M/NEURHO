@@ -9,6 +9,7 @@ from matplotlib.backend_bases import MouseEvent
 import qdarkstyle
 from matplotlib import style
 import sys
+import configs.hw_config as hw
 
 
 class ExploradorCortes3D(QWidget):
@@ -103,8 +104,6 @@ class ExploradorCortes3D(QWidget):
         elif np.array_equal(axes, [1, 0, 2]):
             # TODO: Fix image orientation
             print("WARNING: Image orientation may be wrong: please use image orientation [0, 2, 1]")
-
-        print(coord)
 
         return coord
 
