@@ -116,7 +116,6 @@ class WidgetManualControl(QGroupBox):
         self.positions_ima = [pos_ima]  # Store positions in image
         self.positions_hex = [pos_hex]  # Store positions of hexapod
 
-
     def get_position_clicked(self):
         """
         Computes the centroid and Euler angles based on three selected MRI points and updates the UI.
@@ -345,6 +344,10 @@ class WidgetManualControl(QGroupBox):
 
         thread = threading.Thread(target=go_back)
         thread.start()
+
+    def check_collision(self):
+        # TODO: method to check for collisions between the pole and the shielding
+        pass
 
 
 if __name__ == "__main__":
