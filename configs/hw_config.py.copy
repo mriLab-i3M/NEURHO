@@ -48,6 +48,7 @@ ard_sn_attenuator = '242353133363518050E2'
 
 # Bora Symetrie
 pole_length = 712  # mm, length of the pole
+fus_home = [-100, 0, 0, 0, 0, 0]
 bora_port = 22
 bora_user = "root"
 bora_password = "deltatau"
@@ -55,7 +56,7 @@ bora_ip = "192.168.100.1"
 smc_ip_x = "192.168.1.22"
 smc_ip_y = "192.168.1.23"
 smc_ip_z = "192.168.1.24"
-smc_zero_x = '0'  # mm
-smc_zero_y = '0'  # mm
-smc_zero_z = '0'  # mm
+smc_zero_x = 10  # mm
+smc_zero_y = 140  # mm
+smc_zero_z = 120  # mm
 

@@ -31,8 +31,6 @@ class WidgetManualControl(QGroupBox):
         self.o_hex_labels = []
         self.t_ima_edits = []
         self.t_hex_labels = []
-        self.positions_ima = []  # Store positions in image
-        self.positions_hex = []  # Store positions of hexapod
 
         # Labels for coordinates
         labels_text = ["X0 (mm)", "Y0 (mm)", "Z0 (mm)", "Rx (deg)", "Ry (deg)", "Rz (deg)"]
@@ -106,9 +104,18 @@ class WidgetManualControl(QGroupBox):
         for line_edit in self.t_ima_edits:
             line_edit.textChanged.connect(self.t_ima_edits_changed)
 
+        # Set origin position to hw defined home position
+        self.set_position(point="origin", coordinates=hw.fus_home)
+
         # Set initial values
         self.o_ima_edits_changed()
         self.t_ima_edits_changed()
+
+        # Append initial position
+        pos_ima, pos_hex = self.get_hex_position(point='origin')
+        self.positions_ima = [pos_ima]  # Store positions in image
+        self.positions_hex = [pos_hex]  # Store positions of hexapod
+
 
     def get_position_clicked(self):
         """
@@ -165,7 +172,11 @@ class WidgetManualControl(QGroupBox):
             return euler_angles
 
         # Retrieve selected points from the MRI interface
-        points_mri = self.main.image_widget.puntos_real
+        try:
+            points_mri = self.main.image_widget.puntos_real
+        except AttributeError:
+            print("ERROR: no link to image_widget.")
+            return
 
         if len(points_mri) != 3:
             print("You need 3 points to get the coordinates")
@@ -244,58 +255,6 @@ class WidgetManualControl(QGroupBox):
 
         return r_ima, r_hex
 
-    @staticmethod
-    def get_fus_position(r_hex):
-        """
-        Computes the position of a point given the hexapod base position, its Euler angles, and the pole length.
-
-        This function reverses the computation from `get_position`, finding the top point position
-        from the hexapod base.
-
-        Parameters:
-        - r_hex (list or np.array): The position and orientation of the hexapod in the form:
-            [x_hex, y_hex, z_hex, alpha, beta, gamma]
-
-        Returns:
-        - np.array: The computed position of the point in global coordinates [x, y, z, alpha, beta, gamma].
-        """
-
-        def compute_point_position(P_hexapod, euler_angles, convention='xyz', degrees=True):
-            """
-            Computes the position of the top point given the hexapod base position, its Euler angles, and the pole length.
-
-            Parameters:
-            - P_hexapod (np.array): Position of the hexapod base in global coordinates [x, y, z].
-            - euler_angles (list or np.array): Euler angles [alpha, beta, gamma] in degrees or radians.
-            - L (float): Length of the pole.
-            - convention (str, optional): Rotation convention (default is 'xyz').
-            - degrees (bool, optional): True if angles are in degrees.
-
-            Returns:
-            - np.array: The computed position of the top point in global coordinates [x, y, z].
-            """
-            # Compute rotation matrix from Euler angles
-            rotation = Rotation.from_euler(convention, euler_angles, degrees=degrees)
-            R_matrix = rotation.as_matrix()
-
-            # Extract the new z-axis direction (third column of R)
-            z_new = R_matrix[:, 2]
-
-            # Compute the top point position
-            P_top = P_hexapod + hw.pole_length * z_new
-
-            return P_top
-
-        # Extract hexapod position and Euler angles
-        P_hexapod = np.array(r_hex[:3])
-        euler_angles = np.array(r_hex[3:])
-
-        # Compute the top point position
-        P_top = compute_point_position(P_hexapod, euler_angles)
-
-        # Return the full coordinate set (position + orientation)
-        return list(P_top) + list(euler_angles)
-
     def set_position(self, point=None, coordinates=None):
         if point == 'origin':
             for i, value in enumerate(coordinates):
@@ -328,20 +287,29 @@ class WidgetManualControl(QGroupBox):
                 self.t_hex_labels[ii].setText("%.1f" % r_hex[ii])
 
     def go_clicked(self):
+        thread = threading.Thread(target=self.go_to, args=())
+        thread.start()
+
+        r_ima_target, _ = self.get_hex_position('target')
+        self.set_position(point='origin', coordinates=r_ima_target)
+
+    def go_to(self):
         def go_to_absolute():
             # Get hexapod target coordinates
             r_ima_target, r_hex_target = self.get_hex_position('target')
 
             # Fix coordinate system to smc and hexapod
-            movement = [r_hex_target[0],
-                        r_hex_target[1],
-                        r_hex_target[2],
+            position = [r_hex_target[0] + hw.pole_length - hw.fus_home[0],
+                        r_hex_target[1] - hw.fus_home[1],
+                        r_hex_target[2] - hw.fus_home[2],
                         - r_hex_target[5],
                         + r_hex_target[4],
                         + r_hex_target[3]]
+            print("Position in smc coordinates:")
+            print(position)
 
             # Move the robot
-            if self.fus_robot.move():
+            if self.fus_robot.move(position=position):
                 # Store the positions
                 self.positions_ima.append(r_ima_target)
                 self.positions_hex.append(r_hex_target)
@@ -349,21 +317,17 @@ class WidgetManualControl(QGroupBox):
         def go_to_relative():
             pass
 
-        def go_to():
-            print("Moving FUS...")
-            if self.mode == "Absolute":
-                self.go_to_absolute()
-            elif self.mode == "Relative":
-                self.go_to_relative()
-            print("READY: Movement completed.\n")
-
-        thread = threading.Thread(target=self.go_to)
-        thread.start()
+        print("Moving FUS...")
+        if self.mode == "Absolute":
+            go_to_absolute()
+        elif self.mode == "Relative":
+            go_to_relative()
+        print("READY: Movement completed.\n")
 
     def home_clicked(self):
         def go_home():
             # Set target to Zero
-            self.set_position(point="target", coordinates=[0, 0, 0, 0, 90])
+            self.set_position(point="target", coordinates=hw.fus_home)
             self.go_to()
 
         thread = threading.Thread(target=go_home)
@@ -371,15 +335,12 @@ class WidgetManualControl(QGroupBox):
 
     def go_back_clicked(self):
         def go_back():
-            # if len(self.movements) <= 1:
-            #     print("WARNING: No movements to revert.\n")
-            #     return
-
-            # Get the last movement
-            last_position_ima = self.positions_ima[-2]
+            if len(self.positions_ima) <= 1:
+                print("WARNING: No movements to revert.\n")
+                return
 
             # Set target to last position
-            self.set_position(point='target', coordinates=last_position_ima)
+            self.set_position(point='target', coordinates=self.positions_ima[-2])
             self.go_to()
 
         thread = threading.Thread(target=go_back)
