@@ -21,6 +21,19 @@ class ExploradorCortes3D(QWidget):
         self.ejes = self.datos_mat['axesOrientation'][0]
         self.num_cortes = self.imagen.shape[0]
 
+        # Fix image orientation
+        if np.array_equal(self.ejes, [2, 1, 0]):
+            self.imagen = self.imagen[:, ::-1, ::-1]
+        elif np.array_equal(self.ejes, [1, 2, 0]):
+            # TODO: fix image orientation
+            print("WARNING: Image orientation may be wrong: please use image orientation [2, 1, 0]")
+        elif np.array_equal(self.ejes, [0, 1, 2]):
+            self.imagen = np.transpose(self.imagen, axes=(0, 2, 1))
+            self.imagen = self.imagen[:, ::-1, ::-1]
+        elif np.array_equal(self.ejes, [1, 0, 2]):
+            # TODO: fix image orientation
+            print("WARNING: Image orientation may be wrong: please use image orientation [0, 1, 2]")
+
         # Inicialización de variables
         self.puntos = []
         self.puntos_real = []
@@ -63,9 +76,20 @@ class ExploradorCortes3D(QWidget):
         axes = self.datos_mat['axesOrientation'][0]
         nsl, nph, nrd = self.imagen.shape
         coord = [0.0, 0.0, 0.0]
-        coord[axes[2]] = (pixel[0] - nsl / 2) * resolution[2]  # slice
-        coord[axes[0]] = (pixel[1] - nrd / 2) * resolution[0]  # readout
-        coord[axes[1]] = (pixel[2] - nph / 2) * resolution[1]  # phase
+        if np.array_equal(axes, [2, 1, 0]):  # Transversal
+            coord[axes[2]] = + (pixel[0] - nsl / 2) * resolution[2]  # x-axis
+            coord[axes[0]] = - (pixel[1] - nrd / 2) * resolution[0]  # z-axis
+            coord[axes[1]] = + (pixel[2] - nph / 2) * resolution[1]  # y-axis
+        elif np.array_equal(axes, [1, 2, 0]):
+            # TODO: Fix image orientation
+            print("WARNING: Image orientation may be wrong: please use image orientation [2, 1, 0]")
+        elif np.array_equal(axes, [0, 1, 2]):  # Sagittal
+            coord[axes[2]] = + (pixel[0] - nsl / 2) * resolution[2]  # z-axis
+            coord[axes[0]] = + (pixel[1] - nrd / 2) * resolution[0]  # y-axis
+            coord[axes[1]] = - (pixel[2] - nph / 2) * resolution[1]  # x-axis
+        elif np.array_equal(axes, [1, 0, 2]):
+            # TODO: Fix image orientation
+            print("WARNING: Image orientation may be wrong: please use image orientation [1, 0, 2]")
 
         return coord
 
@@ -348,6 +372,6 @@ class ExploradorCortes3D(QWidget):
 
 if __name__=="__main__":
     app = QApplication(sys.argv)
-    window = ExploradorCortes3D('RAREprotocols_T1_SAG_Right.2023.10.24.19.28.37.989.mat')
+    window = ExploradorCortes3D('RARE_TRA.mat')
     window.show()
     sys.exit(app.exec_())

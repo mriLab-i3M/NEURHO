@@ -24,7 +24,7 @@ class PositioningWindow(QWidget):
         self.main = main
         self.session = session
         self.setWindowTitle("Positioning Window")
-        self.setGeometry(300, 300, 500, 500)
+        self.setGeometry(300, 300, 1100, 500)
         self.styleSheet = qdarkstyle.load_stylesheet_pyqt5()
         self.setStyleSheet(self.styleSheet)
 
@@ -58,7 +58,7 @@ class PositioningWindow(QWidget):
     def fix_console(self):
         self.layout_left.addWidget(self.console)
 
-    def rawDataLoading(self, file_path="../", file_name="RAREprotocols_T1_SAG_Right.2023.10.24.19.28.37.989.mat"):
+    def rawDataLoading(self, file_path="../", file_name="RARE_TRA.mat"):
         """
         Load raw data from a .mat file and update the image view widget.
         """
@@ -78,7 +78,7 @@ class PositioningWindow(QWidget):
         image, x_label, y_label, title = self.fixImage(image, axes)
 
         # Create the plot widget and add it to the figures_layout
-        self.image_widget = ExploradorCortes3D('RAREprotocols_T1_SAG_Right.2023.10.24.19.28.37.989.mat')
+        self.image_widget = ExploradorCortes3D(file_path)
         self.figures_layout.clear_figures_layout()
         self.figures_layout.addWidget(self.image_widget)
 

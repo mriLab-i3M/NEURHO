@@ -19,7 +19,7 @@ class WidgetManualControl(QGroupBox):
         self.main = main
 
         # Connect to Bora
-        self.bora = Bora()
+        # self.bora = Bora()
 
         # Connect to SMC
         # TODO: Connect to SMC
@@ -142,17 +142,17 @@ class WidgetManualControl(QGroupBox):
 
             return (x_center, y_center, z_center)
 
-        def compute_euler_angles(A, B, C):
+        def compute_euler_angles(a, b, c):
             # Step 1: Compute vectors defining the plane
-            v1 = B - A
-            v2 = C - A
+            ab = b - a
+            ca = a - c
 
-            # Step 2: Compute the new z' axis (normal to the plane)
-            z_new = np.cross(v1, v2)
-            z_new = z_new / np.linalg.norm(z_new)  # Normalize
+            # Step 2: Compute the new x' axis (normal to the plane)
+            x_new = np.cross(ab, ca)
+            x_new = x_new / np.linalg.norm(x_new)  # Normalize
 
-            # Step 3: Define new x' axis (aligned with v1)
-            x_new = v1 / np.linalg.norm(v1)
+            # Step 3: Define new z' axis (aligned with v1)
+            z_new = ab / np.linalg.norm(ab)
 
             # Step 4: Compute new y' axis (perpendicular to x' and z')
             y_new = np.cross(z_new, x_new)
@@ -162,7 +162,8 @@ class WidgetManualControl(QGroupBox):
             R_matrix = np.column_stack((x_new, y_new, z_new))
 
             # Step 6: Convert rotation matrix to Euler angles (ZYX convention)
-            euler_angles = Rotation.from_matrix(R_matrix).as_euler('zyx', degrees=True)
+            euler_angles = Rotation.from_matrix(R_matrix).as_euler('xyz', degrees=True)
+            euler_angles = [-angle for angle in euler_angles]
 
             return euler_angles
 
@@ -172,14 +173,10 @@ class WidgetManualControl(QGroupBox):
         if len(points_mri) != 3:
             print("You need 3 points to get the coordinates")
         else:
-            # Reformat points from scanner to bora coordinates for further processing
-            points_bora = [[p[1], p[2], p[0]] for p in points_mri]
-
-            # Compute centroid and Euler angles
-            centroid = get_center(points_bora)
-            euler_angles = compute_euler_angles(np.array(points_bora[0]),
-                                                np.array(points_bora[1]),
-                                                np.array(points_bora[2]))
+            centroid = get_center(points_mri)
+            euler_angles = compute_euler_angles(np.array(points_mri[0]),
+                                                np.array(points_mri[1]),
+                                                np.array(points_mri[2]))
 
             # Update the QTextEdits with centroid (converted to mm) and Euler angles
             coord = [centroid[0] * 1e3, centroid[1] * 1e3, centroid[2] * 1e3,
@@ -220,10 +217,10 @@ class WidgetManualControl(QGroupBox):
             R_matrix = rotation.as_matrix()
 
             # Extract the new z-axis direction (third column of R)
-            z_new = R_matrix[:, 2]
+            x_new = R_matrix[:, 0]
 
             # Compute the hexapod base position
-            P_hexapod = P_top - hw.pole_length * z_new
+            P_hexapod = P_top - hw.pole_length * x_new
 
             return P_hexapod
 
