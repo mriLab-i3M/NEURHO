@@ -97,5 +97,5 @@ class Robot:
 
 if __name__ == '__main__':
     device = Robot()
-    device.move(position=[50, -50, 50, 3, 3, 3])
+    device.move(position=[5, -5, 5, 3, 3, 3])
     device.move(position=[0, 0, 0, 0, 0, 0])

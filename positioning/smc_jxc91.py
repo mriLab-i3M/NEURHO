@@ -22,6 +22,7 @@ class actuator_smc():
         else:
             print(f"ERROR: Cannot connect to smc {self.axis}!")
         self.reset_alarm()
+        self.home_mm()
 
     def configure_smc(self):
         if self.axis == 'x':
@@ -125,7 +126,6 @@ class actuator_smc():
             )
             time.sleep(1)  # 1
             self.powerOn()
-            self.home_mm()
         except:
             print(f"ERROR: reset alarm in {self.axis}")
 
@@ -214,8 +214,22 @@ class smc():
 
         return True
 
+    def turn_off(self):
+        # Create a list of threads
+        threads = []
+
+        # Create and start a thread for each device movement
+        for ii in range(len(self.devices)):
+            thread = threading.Thread(target=self.devices[ii].powerOff, args=())
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to finish
+        for thread in threads:
+            thread.join()
+
 if __name__ == '__main__':
     device = smc()
-    device.move(position=[50, -50, 50])
-    device.move(position=[-50, 50, 40])
+    device.move(position=[5, -5, 5])
     device.move(position=[0, 0, 0])
+    device.turn_off()

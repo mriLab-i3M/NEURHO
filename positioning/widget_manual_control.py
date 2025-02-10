@@ -286,8 +286,9 @@ class WidgetManualControl(QGroupBox):
                 self.t_hex_labels[ii].setText("%.1f" % r_hex[ii])
 
     def go_clicked(self):
-        thread = threading.Thread(target=self.go_to, args=())
-        thread.start()
+        # thread = threading.Thread(target=self.go_to, args=())
+        # thread.start()
+        self.go_to()
 
         r_ima_target, _ = self.get_hex_position('target')
         self.set_position(point='origin', coordinates=r_ima_target)
@@ -301,9 +302,9 @@ class WidgetManualControl(QGroupBox):
             position = [r_hex_target[0] + hw.pole_length - hw.fus_home[0],
                         r_hex_target[1] - hw.fus_home[1],
                         r_hex_target[2] - hw.fus_home[2],
-                        - r_hex_target[5],
                         + r_hex_target[4],
-                        + r_hex_target[3]]
+                        + r_hex_target[5],
+                        - r_hex_target[3]]
             print("Position in smc coordinates:")
             print(position)
 
