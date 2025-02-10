@@ -4,7 +4,6 @@ import sys
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-import positioning.hw_positioning as hwp
 import configs.hw_config as hw
 
 from PyQt5.QtWidgets import QGroupBox, QSizePolicy, QLabel, QLineEdit, QPushButton, QGridLayout, QApplication, \
@@ -330,8 +329,7 @@ class WidgetManualControl(QGroupBox):
             self.set_position(point="target", coordinates=hw.fus_home)
             self.go_to()
 
-        thread = threading.Thread(target=go_home)
-        thread.start()
+        go_home()
 
     def go_back_clicked(self):
         def go_back():
@@ -342,9 +340,9 @@ class WidgetManualControl(QGroupBox):
             # Set target to last position
             self.set_position(point='target', coordinates=self.positions_ima[-2])
             self.go_to()
-
-        thread = threading.Thread(target=go_back)
-        thread.start()
+        go_back()
+        self.positions_ima.pop()
+        self.positions_hex.pop()
 
     def check_collision(self):
         # TODO: method to check for collisions between the pole and the shielding

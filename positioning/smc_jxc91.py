@@ -18,7 +18,7 @@ class actuator_smc():
         self.driver = CIPDriver(self.config['SMC_DRIVER_IP'])
         self.driver.open()
         if self.driver.connected:
-            print(f"READY: Connection to smc {self.axis} sucessfull!")
+            print(f"READY: Connection to smc {self.axis} successful!")
         else:
             print(f"ERROR: Cannot connect to smc {self.axis}!")
         self.reset_alarm()
@@ -78,6 +78,7 @@ class actuator_smc():
         return pos_h, pos_l
 
     def move(self, data_start):
+        self.powerOn()
         self.driver.generic_message(
             service=Services.set_attribute_single,
             class_code=b'\x04',
@@ -96,6 +97,7 @@ class actuator_smc():
         while word0[3] != 'e':
             resp = self.escuchar()
             word0 = resp[:4]
+        self.powerOff()
 
     def powerOff(self):
         data_str = "000000000000000000000000000000000000000000000000000000000000000000000000"
@@ -109,6 +111,8 @@ class actuator_smc():
             unconnected_send=False,
             route_path=True
         )
+
+    def close_driver(self):
         self.driver.close()
 
     def reset_alarm(self):
@@ -125,7 +129,6 @@ class actuator_smc():
                 route_path=True
             )
             time.sleep(1)  # 1
-            self.powerOn()
         except:
             print(f"ERROR: reset alarm in {self.axis}")
 
