@@ -9,7 +9,7 @@ import sys
 
 import numpy as np
 import scipy as sp
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QApplication, QGridLayout
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFileDialog
 import qdarkstyle
 from positioning.widget_manual_control import WidgetManualControl
 from positioning.widget_figures import FiguresLayoutWidget
@@ -58,12 +58,29 @@ class PositioningWindow(QWidget):
     def fix_console(self):
         self.layout_left.addWidget(self.console)
 
-    def rawDataLoading(self, file_path="../", file_name="RARE_TRA.mat"):
+    def loadmatFile(self):
+        """
+        Open a file dialog to select a .mat file and return its path.
+
+        Returns:
+            str: The path of the selected .mat file.
+        """
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+        default_dir = "C:/Users/Portatil PC 6/PycharmProjects/pythonProject1/Results"
+
+        # Open the file dialog and prompt the user to select a .mat file
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select a .mat file", default_dir, "MAT Files (*.mat)",
+                                                   options=options)
+
+        return file_name
+
+    def rawDataLoading(self, file_path="", file_name="RARE_TRA.mat"):
         """
         Load raw data from a .mat file and update the image view widget.
         """
         # Prompt the user to select a .mat file
-        if not file_path:
+        if file_path is None:
             file_path = self.loadmatFile()
             file_name = os.path.basename(file_path)
         else:
