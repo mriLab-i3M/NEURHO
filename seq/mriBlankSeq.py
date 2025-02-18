@@ -64,9 +64,9 @@ class MRIBLANKSEQ:
         self.mapTips = {}
         self.map_units = {}
         self.meta_data = {}
-        self.rotations = []
-        self.dfovs = []
-        self.fovs = []
+        self.rotations = hw.rotations
+        self.dfovs = hw.dfovs
+        self.fovs = hw.fovs
         self.session = {}
         self.demo = None
         self.mode = None
@@ -82,6 +82,12 @@ class MRIBLANKSEQ:
                          'ttl0': [[],[]],
                          'ttl1': [[],[]],}
 
+        self.addParameter(key='seqName', val='blankSeq')
+        self.addParameter(key='angle', val=0)
+        self.addParameter(key='rotationAxis', val=[0, 0, 1])
+        self.addParameter(key='dfov', val=[0.0, 0.0, 0.0])
+        self.addParameter(key='fov', val=[0.0, 0.0, 0.0])
+        self.addParameter(key='pypulseq', val=False)
 
     # *********************************************************************************
     # *********************************************************************************
@@ -165,12 +171,121 @@ class MRIBLANKSEQ:
                 tips[self.mapNmspc[key]] = [self.mapTips[key]]
         return out, tips
 
+    def rotate_waveforms(self, waveforms):
+        # Get the waveforms
+        gx = waveforms['grad_vx']
+        gy = waveforms['grad_vy']
+        gz = waveforms['grad_vz']
+        is_x = np.zeros_like(gx[0], dtype=int)
+        is_y = np.zeros_like(gy[0], dtype=int) + 1
+        is_z = np.zeros_like(gz[0], dtype=int) + 2
+
+        # Concatenate arrays
+        time = np.concatenate((gx[0], gy[0], gz[0]))
+        ampl = np.concatenate((gx[1] * hw.gFactor[0], gy[1] * hw.gFactor[1], gz[1] * hw.gFactor[2]))  # mT/m
+        is_a = np.concatenate((is_x, is_y, is_z))
+
+        # Sort arrays
+        idx = np.argsort(time)
+        time = time[idx]
+        ampl = ampl[idx]
+        is_a = is_a[idx]
+
+        # Define new gradient waveforms
+        gx_new = [[], []]
+        gy_new = [[], []]
+        gz_new = [[], []]
+        g_new = [[], [], []]
+
+        # Populate new waveform
+        w = []
+        t = []
+        step = 0
+        n_steps = 0
+        while step < len(time):
+            g = [0., 0., 0.]
+
+            # Add time
+            gx_new[0].append(time[step])
+            gy_new[0].append(time[step])
+            gz_new[0].append(time[step])
+
+            next = True
+            while next:
+                try:
+                    # Get amplitude
+                    g_new[is_a[step]].append(ampl[step])
+                    if time[step + 1] != time[step]:
+                        if step == 0:
+                            if len(g_new[0]) == 0:
+                                g_new[0].append(0.)
+                            if len(g_new[0]) == 0:
+                                g_new[1].append(0.)
+                            if len(g_new[0]) == 0:
+                                g_new[2].append(0.)
+                        elif step > 0:
+                            if len(g_new[0]) == n_steps:
+                                g_new[0].append(g_new[0][-1])
+                            if len(g_new[1]) == n_steps:
+                                g_new[1].append(g_new[1][-1])
+                            if len(g_new[2]) == n_steps:
+                                g_new[2].append(g_new[2][-1])
+                        n_steps += 1
+                        next = False
+                        gx_new[1].append(g_new[0][-1])
+                        gy_new[1].append(g_new[1][-1])
+                        gz_new[1].append(g_new[2][-1])
+                except:
+                    if step == 0:
+                        if len(g_new[0]) == 0:
+                            g_new[0].append(0.)
+                        if len(g_new[0]) == 0:
+                            g_new[1].append(0.)
+                        if len(g_new[0]) == 0:
+                            g_new[2].append(0.)
+                    elif step > 0:
+                        if len(g_new[0]) == n_steps:
+                            g_new[0].append(g_new[0][-1])
+                        if len(g_new[1]) == n_steps:
+                            g_new[1].append(g_new[1][-1])
+                        if len(g_new[2]) == n_steps:
+                            g_new[2].append(g_new[2][-1])
+                    n_steps += 1
+                    next = False
+                    gx_new[1].append(g_new[0][-1])
+                    gy_new[1].append(g_new[1][-1])
+                    gz_new[1].append(g_new[2][-1])
+                step += 1
+        g_new = np.array(g_new)
+
+        # Rotate the waveforms
+        rot = self.getRotationMatrix()
+        for step in range(np.size(g_new, axis=1)):
+            g_new[:, step] = np.dot(rot, g_new[:, step])
+        gx_new[1] = list(g_new[0, :] / hw.gFactor[0])
+        gy_new[1] = list(g_new[1, :] / hw.gFactor[1])
+        gz_new[1] = list(g_new[2, :] / hw.gFactor[2])
+
+        waveforms['grad_vx'] = gx_new
+        waveforms['grad_vy'] = gy_new
+        waveforms['grad_vz'] = gz_new
+
+        # Delete last rotation/displacement if plot
+        if self.plotSeq:
+            self.fovs.pop()
+            self.dfovs.pop()
+            self.rotations.pop()
+
+        return waveforms
+
     def runBatches(self, waveforms, n_readouts, n_adc,
                    frequency=hw.larmorFreq,
                    bandwidth=0.03,
                    decimate='Normal',
                    hardware=True,
                    output='',
+                   channels=[0],
+                   angulation=1,
                    ):
         """
         Execute multiple batches of MRI waveforms, manage data acquisition, and store oversampled data.
@@ -197,6 +312,10 @@ class MRIBLANKSEQ:
             Take into account gradient and ADC delay.
         output: str, optional
             String to add to the output keys saved in the mapVals parameter.
+        channels : list, optional
+            List of channels used for Rx
+        angulation : bool, optional
+            Bool parameter to work with angulation (1) or without angulation (0)
 
         Returns:
         --------
@@ -221,6 +340,10 @@ class MRIBLANKSEQ:
 
         # Iterate through each batch of waveforms
         for seq_num in waveforms.keys():
+            # Rotate the waveforms to given reference system
+            if angulation:
+                waveforms[seq_num] = self.rotate_waveforms(waveforms[seq_num])
+
             # Initialize the experiment if not in demo mode
             if not self.demo:
                 self.expt = ex.Experiment(
@@ -236,6 +359,7 @@ class MRIBLANKSEQ:
                                       shimming=self.shimming,
                                       sampling_period=1/bandwidth,
                                       hardware=hardware,
+                                      channels=channels
                                       )
 
             # Load the waveforms into Red Pitaya
@@ -305,6 +429,7 @@ class MRIBLANKSEQ:
                              shimming=np.array([0.0, 0.0, 0.0]),
                              sampling_period=0.0,
                              hardware=True,
+                             channels=[0],
                              ):
         """
         Converts PyPulseq waveforms into a format compatible with MRI hardware.
@@ -321,6 +446,8 @@ class MRIBLANKSEQ:
             Sampling period in seconds, used to account for delays in the CIC filter. Defaults to 0.0.
         hardware: bool, optional
             Take into account gradient and ADC delay
+        channels: list, optional
+            List of channels used for Rx
 
         Returns:
         --------
@@ -445,7 +572,7 @@ class MRIBLANKSEQ:
         """
 
         def rotationMatrix(rotation):
-            theta = rotation[3] * np.pi / 180
+            theta = - rotation[3]
             ux, uy, uz = rotation[:3]
             out = np.zeros((3, 3))
             out[0, 0] = np.cos(theta) + ux ** 2 * (1 - np.cos(theta))
@@ -1671,7 +1798,7 @@ class MRIBLANKSEQ:
             None
 
         """
-        if key is not self.mapVals.keys():
+        if key not in self.mapVals.keys():
             self.mapKeys.append(key)
         self.mapNmspc[key] = string
         self.mapVals[key] = val
@@ -1700,6 +1827,19 @@ class MRIBLANKSEQ:
                 setattr(self, key, np.array([element * self.map_units[key] for element in self.mapVals[key]]))
             else:
                 setattr(self, key, self.mapVals[key] * self.map_units[key])
+
+        # Conversion of variables to non-multiplied units
+        if self.pypulseq:
+            self.angle = - self.angle * np.pi / 180  # rads
+        else:
+            self.angle = + self.angle * np.pi / 180
+
+        # Add rotation, dfov and fov to the history
+        self.rotation = self.rotationAxis.tolist()
+        self.rotation.append(self.angle)
+        self.rotations.append(self.rotation)
+        self.dfovs.append(self.dfov.tolist())
+        self.fovs.append(self.fov.tolist())
 
     def plotResults(self):
         """
@@ -1785,8 +1925,7 @@ class MRIBLANKSEQ:
         self.mapNmspc[key] = string
         self.map_units[key] = unit
 
-    @staticmethod
-    def fix_image_orientation(image, axes):
+    def fix_image_orientation(self, image, axes):
         """
         Adjusts the orientation of a 3D image array to match standard anatomical planes
         (sagittal, coronal, or transversal) and returns the oriented image along with labeling
@@ -1828,37 +1967,37 @@ class MRIBLANKSEQ:
                 image = np.flip(image, axis=0)
                 x_label = "(-Y) A | PHASE | P (+Y)"
                 y_label = "(-X) I | READOUT | S (+X)"
-                image_orientation_dicom = [0.0, 1.0, 0.0, 0.0, 0.0, -1.0]
+                self.image_orientation_dicom = [0.0, 1.0, 0.0, 0.0, 0.0, -1.0]
             else:
                 image = np.transpose(image, (0, 2, 1))
                 image = np.flip(image, axis=0)
                 x_label = "(-Y) A | READOUT | P (+Y)"
                 y_label = "(-X) I | PHASE | S (+X)"
-                image_orientation_dicom = [0.0, 1.0, 0.0, 0.0, 0.0, -1.0]
+                self.image_orientation_dicom = [0.0, 1.0, 0.0, 0.0, 0.0, -1.0]
         elif axes[2] == 1:  # Coronal
             title = "Coronal"
             if axes[0] == 0 and axes[1] == 2:
                 x_label = "(+Z) R | PHASE | L (-Z)"
                 y_label = "(-X) I | READOUT | S (+X)"
-                image_orientation_dicom = [1.0, 0.0, 0.0, 0.0, 0.0, -1.0]
+                self.image_orientation_dicom = [1.0, 0.0, 0.0, 0.0, 0.0, -1.0]
             else:
                 image = np.transpose(image, (0, 2, 1))
                 x_label = "(+Z) R | READOUT | L (-Z)"
                 y_label = "(-X) I | PHASE | S (+X)"
-                image_orientation_dicom = [1.0, 0.0, 0.0, 0.0, 0.0, -1.0]
+                self.image_orientation_dicom = [1.0, 0.0, 0.0, 0.0, 0.0, -1.0]
         elif axes[2] == 0:  # Transversal
             title = "Transversal"
             if axes[0] == 1 and axes[1] == 2:
                 image = np.flip(image, axis=0)
                 x_label = "(+Z) R | PHASE | L (-Z)"
                 y_label = "(+Y) P | READOUT | A (-Y)"
-                image_orientation_dicom = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+                self.image_orientation_dicom = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
             else:
                 image = np.transpose(image, (0, 2, 1))
                 image = np.flip(image, axis=0)
                 x_label = "(+Z) R | READOUT | L (-Z)"
                 y_label = "(+Y) P | PHASE | A (-Y)"
-                image_orientation_dicom = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+                self.image_orientation_dicom = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0]
 
         output = {
             'widget': 'image',

@@ -40,6 +40,7 @@ class MSE(blankSeq.MRIBLANKSEQ):
         super(MSE, self).__init__()
         # Input the parameters
         self.addParameter(key='seqName', string='MSEInfo', val='MSE')
+        self.addParameter(key='toMaRGE', val=True)
         self.addParameter(key='nScans', string='Number of scans', val=1, field='IM')
         self.addParameter(key='freqOffset', string='Larmor frequency offset (kHz)', val=0.0, units=units.kHz, field='RF')
         self.addParameter(key='rfExFA', string='Excitation flip angle (º)', val=90, field='RF')
@@ -103,19 +104,6 @@ class MSE(blankSeq.MRIBLANKSEQ):
         return(seqTime)  # minutes, scanTime
 
         # TODO: check for min and max values for all fields
-
-    def sequenceAtributes(self):
-        super().sequenceAtributes()
-
-        # Conversion of variables to non-multiplied units
-        self.angle = self.angle * np.pi / 180 # rads
-
-        # Add rotation, dfov and fov to the history
-        self.rotation = self.rotationAxis.tolist()
-        self.rotation.append(self.angle)
-        self.rotations.append(self.rotation)
-        # self.dfovs.append(self.dfov.tolist())
-        self.fovs.append(self.fov.tolist())
 
     def sequenceRun(self, plotSeq=False, demo=False):
         print('MSE run')

@@ -28,6 +28,7 @@ import configs.units as units
 import seq.mriBlankSeq as blankSeq  # Import the mriBlankSequence for any new sequence.
 from marga_pulseq.interpreter import PSInterpreter  # Import the marga_pulseq interpreter
 import pypulseq as pp  # Import PyPulseq
+from skimage.restoration import unwrap_phase as unwrap
 
 
 # Template Class for MRI Sequences
@@ -57,6 +58,8 @@ class spds(blankSeq.MRIBLANKSEQ):
         self.plotSeq = None
         self.addParameter(key='seqName', string='Sequence Name', val='SPDS',
                           tip="The identifier name for the sequence.")
+        self.addParameter(key='toMaRGE', string='to MaRGE', val=True)
+        self.addParameter(key='pypulseq', string='PyPulseq', val=True)
         self.addParameter(key='nScans', string='Number of scans', val=1, field='IM',
                           tip='Number of repetitions of the full scan.')
         self.addParameter(key='FreqOffset', string='Frequency offset (kHz)', val=0, units=units.kHz, field='RF',
@@ -65,10 +68,12 @@ class spds(blankSeq.MRIBLANKSEQ):
                           tip="Flip angle of the excitation RF pulse in degrees")
         self.addParameter(key='rfExTime', string='Excitation time (us)', val=50.0, units=units.us, field='RF',
                           tip="Duration of the RF excitation pulse in microseconds (us).")
-        self.addParameter(key='nPoints', string='Matrix size [rd, ph, sl]', val=[10, 10, 10], field='IM',
+        self.addParameter(key='nPoints', string='Matrix size [rd, ph, sl]', val=[10, 10, 1], field='IM',
                           tip='Matrix size for the acquired images.')
         self.addParameter(key='fov', string='Field of View (cm)', val=[15.0, 15.0, 15.0], units=units.cm, field='IM',
                           tip='Field of View (cm).')
+        self.addParameter(key='dfov', string='dFOV[x,y,z] (mm)', val=[0.0, 0.0, 0.0], units=units.mm, field='IM',
+                          tip="Position of the gradient isocenter")
         self.addParameter(key='axesOrientation', string='Axes[rd,ph,sl]', val=[2, 1, 0], field='IM',
                           tip="0=x, 1=y, 2=z")
         self.addParameter(key='repetitionTime', string='Repetition Time (ms)', val=50.0, units=units.ms, field='SEQ',
@@ -81,6 +86,10 @@ class spds(blankSeq.MRIBLANKSEQ):
                           tip='Shimming parameter to compensate B0 linear inhomogeneity.')
         self.addParameter(key='bw', string='Bandwidth (kHz)', val=50.0, units=units.kHz, field='IMG',
                           tip='Set acquisition bandwidth in kilohertz (kHz).')
+        self.addParameter(key='angle', string='Angle (º)', val=0.0, field='IM',
+                          tip='Angle in degrees to rotate the fov')
+        self.addParameter(key='rotationAxis', string='Rotation axis', val=[0, 0, 1], field='IM',
+                          tip='Axis of rotation')
 
 
     def sequenceInfo(self):
@@ -106,7 +115,10 @@ class spds(blankSeq.MRIBLANKSEQ):
         nPoints = self.mapVals['nPoints']
         kx = np.linspace(start=-1, stop=1, endpoint=False, num=nPoints[0])
         ky = np.linspace(start=-1, stop=1, endpoint=False, num=nPoints[1])
-        kz = np.linspace(start=-1, stop=1, endpoint=False, num=nPoints[2])
+        if nPoints > 1:
+            kz = np.linspace(start=-1, stop=1, endpoint=False, num=nPoints[2])
+        else:
+            kz = np.array([0.0])
         ky, kz, kx = np.meshgrid(ky, kz, kx)
         k_norm = np.zeros(shape=(np.size(kx), 3))
         k_norm[:, 0] = np.reshape(kx, -1)
@@ -120,23 +132,6 @@ class spds(blankSeq.MRIBLANKSEQ):
         time = tr * n / 60 * 2 * self.mapVals['nScans']  # minutes
 
         return time  # minutes
-
-    def sequenceAtributes(self):
-        """
-        Assign input parameters as attributes for the sequence.
-
-        This method is called by the GUI before invoking the `sequenceRun` method.
-        It ensures that any input parameters defined using methods like
-        `self.addParameter(key='param', string='Parameter', val=1)` are assigned as
-        class attributes, allowing them to be accessed directly using `self.param`.
-
-        Example:
-            If you define an input parameter as:
-                `self.addParameter(key='param', string='Parameter', val=1, ...)`
-            You can access its value later in the sequence as:
-                `self.param`
-        """
-        super().sequenceAtributes()
 
     def sequenceRun(self, plotSeq=False, demo=False, standalone=False):
         """
@@ -208,6 +203,11 @@ class spds(blankSeq.MRIBLANKSEQ):
         gradient strengths, before defining the sequence blocks.
         '''
 
+        # Set the fov
+        self.dfov = self.getFovDisplacement()
+        self.dfov = self.dfov[self.axesOrientation]
+        self.fov = self.fov[self.axesOrientation]
+
         # Get k-space info
         dk = 1 / self.fov  # m^-1
         k_max = self.nPoints / (2 * self.fov)  # m^-1
@@ -230,7 +230,10 @@ class spds(blankSeq.MRIBLANKSEQ):
         # Get cartesian points
         kx = np.linspace(start=-1, stop=1, endpoint=False, num=self.nPoints[0])
         ky = np.linspace(start=-1, stop=1, endpoint=False, num=self.nPoints[1])
-        kz = np.linspace(start=-1, stop=1, endpoint=False, num=self.nPoints[2])
+        if self.nPoints[2] > 1:
+            kz = np.linspace(start=-1, stop=1, endpoint=False, num=self.nPoints[2])
+        else:
+            kz = np.array([0.0])
         ky, kz, kx = np.meshgrid(ky, kz, kx)
         k_norm = np.zeros(shape=(np.size(kx), 3))
         k_norm[:, 0] = np.reshape(kx, -1)
@@ -251,8 +254,8 @@ class spds(blankSeq.MRIBLANKSEQ):
         gradients_b = gradients_b[self.mask]
         self.mapVals['gradients_a'] = gradients_a
         self.mapVals['gradients_b'] = gradients_b
-        gradients_a = np.vstack([[0.0, 0.0, 0.0], gradients_a])
-        gradients_b = np.vstack([[0.0, 0.0, 0.0], gradients_b])
+        gradients_a = np.vstack([[0.0, 0.0, 0.0], gradients_a, [0.0, 0.0, 0.0]])
+        gradients_b = np.vstack([[0.0, 0.0, 0.0], gradients_b, [0.0, 0.0, 0.0]])
 
         # Map the axis to "x", "y", and "z" according ot axesOrientation
         axes_map = {0: "x", 1: "y", 2: "z"}
@@ -506,11 +509,11 @@ class spds(blankSeq.MRIBLANKSEQ):
         k_points = self.mapVals['k_cartesian']
         mask = self.mask
 
-        # Delete the addRdPoints
+        # Delete the addRdPoints and last readout
         data_a = np.reshape(data_a, (-1, 1 + 2 * hw.addRdPoints))
         data_b = np.reshape(data_b, (-1, 1 + 2 * hw.addRdPoints))
-        data_a = data_a[:, hw.addRdPoints]
-        data_b = data_b[:, hw.addRdPoints]
+        data_a = data_a[0:-1, hw.addRdPoints]
+        data_b = data_b[0:-1, hw.addRdPoints]
 
         # Fill k_space
         k_data_a = np.zeros(np.size(k_points, 0), dtype=complex)
@@ -537,8 +540,8 @@ class spds(blankSeq.MRIBLANKSEQ):
         mask = np.abs(i_data_a) < p_max/3
 
         # Get phase
-        i_phase_a = np.angle(i_data_a)
-        i_phase_b = np.angle(i_data_b)
+        i_phase_a = unwrap(np.angle(i_data_a))
+        i_phase_b = unwrap(np.angle(i_data_b))
 
         # Get magnetic field
         b_field = (i_phase_b - i_phase_a) / (2 * np.pi * hw.gammaB * (self.deadTime[1] - self.deadTime[0]))
