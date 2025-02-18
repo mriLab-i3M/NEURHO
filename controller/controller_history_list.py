@@ -21,6 +21,7 @@ from widgets.widget_history_list import HistoryListWidget
 from manager.dicommanager import DICOMImage
 import numpy as np
 import configs.hw_config as hw
+from positioning.viewpyqtgraph import ExploradorCortes3D
 
 
 class HistoryListController(HistoryListWidget):
@@ -257,6 +258,12 @@ class HistoryListController(HistoryListWidget):
 
         # Get the widget from history
         output = self.outputs[self.current_output]
+
+        # Add here image to positioning window
+        file = self.main.session['directory']+"/mat/"+item.text().split(' | ')[1]
+        self.main.parent.positioning_window.image_widget = ExploradorCortes3D(file)
+        self.main.parent.positioning_window.figures_layout.clear_figures_layout()
+        self.main.parent.positioning_window.figures_layout.addWidget(self.main.parent.positioning_window.image_widget)
 
         # Get rotations and shifts from history
         try:

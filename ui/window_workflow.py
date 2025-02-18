@@ -56,7 +56,7 @@ class WorkflowWindow(QMainWindow):
         self.setCentralWidget(self.tabs)
 
     def setupTab1(self):
-        self.MaRGE = MainController(self.session, demo=True)
+        self.MaRGE = MainController(self.session, demo=self.demo, parent=self)
 
         # Create a layout for the tab and add the existing GUI's central widget to it
         layout = QVBoxLayout()
