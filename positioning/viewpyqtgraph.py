@@ -57,7 +57,7 @@ class ExploradorCortes3D(QWidget):
         # Establecer el estilo de Matplotlib
         style.use('dark_background')  # Esto aplica un fondo oscuro y colores claros en los gráficos
 
-    def pixel2coord(self, pixel):
+    def pixel2coord(self, pixel, item=None):
         """
         Converts pixel coordinates to real-world coordinates based on resolution
         and axis orientation.
@@ -81,6 +81,8 @@ class ExploradorCortes3D(QWidget):
         """
         resolution = self.datos_mat['resolution'][0]
         axes = self.datos_mat['axesOrientation'][0]
+        mapping = {0: 'x', 1: 'y', 2: 'z'}
+        axes_2 = [mapping[n] for n in axes]
         nsl, nph, nrd = self.imagen.shape
         coord = [0.0, 0.0, 0.0]
         if np.array_equal(axes, [2, 1, 0]):  # Transversal
@@ -104,6 +106,17 @@ class ExploradorCortes3D(QWidget):
         elif np.array_equal(axes, [1, 0, 2]):
             # TODO: Fix image orientation
             print("WARNING: Image orientation may be wrong: please use image orientation [0, 2, 1]")
+
+        if item == None:
+            self.lista_coordenadas.addItem(f"Corte: {pixel[0]}, X: {pixel[1]}, Y: {pixel[2]} || " +
+                "%s: %0.0f mm, %s: %0.0f mm, %s: %0.0f mm" % (axes_2[0], coord[0] * 1e3,
+                                                              axes_2[1], coord[1] * 1e3,
+                                                              axes_2[2], coord[2] * 1e3))
+        else:
+            item.setText(f"Corte: {pixel[0]}, X: {pixel[1]}, Y: {pixel[2]} || " +
+                "%s: %0.0f mm, %s: %0.0f mm, %s: %0.0f mm" % (axes_2[0], coord[0] * 1e3,
+                                                              axes_2[1], coord[1] * 1e3,
+                                                              axes_2[2], coord[2] * 1e3))
 
         return coord
 
@@ -281,7 +294,8 @@ class ExploradorCortes3D(QWidget):
         selected_item = self.lista_coordenadas.currentItem()
         if selected_item:
             texto = selected_item.text()
-            partes = texto.split(',')
+            original, _ = texto.split(" || ")
+            partes = original.split(',')
             corte = int(partes[0].split(':')[1].strip())
             x = int(partes[1].split(':')[1].strip())
             y = int(partes[2].split(':')[1].strip())
@@ -292,8 +306,8 @@ class ExploradorCortes3D(QWidget):
         """Agrega un nuevo punto a la lista y lo dibuja en la imagen."""
         if len(self.puntos) < 3:
             self.puntos.append([corte, x, y, 'yo'])
-            self.puntos_real.append(self.pixel2coord([corte, x, y]))
-            self.lista_coordenadas.addItem(f'Corte: {corte}, X: {x}, Y: {y}')
+            coordinates = self.pixel2coord([corte, x, y])
+            self.puntos_real.append(coordinates)
 
     def actualizar_coordenadas(self):
         """Actualiza las coordenadas del punto movido en el ListBox."""
@@ -302,14 +316,15 @@ class ExploradorCortes3D(QWidget):
                 item = self.lista_coordenadas.item(i)
                 item.setText(f'Corte: {punto[0]}, X: {punto[1]}, Y: {punto[2]}')
                 self.puntos[i][0:3] = punto[0:3]
-                self.puntos_real[i] = self.pixel2coord([punto[0], punto[1], punto[2]])
+                self.puntos_real[i] = self.pixel2coord([punto[0], punto[1], punto[2]], item=item)
 
     def mostrar_punto_seleccionado(self):
         """Muestra el punto seleccionado del ListBox en la imagen."""
         item = self.lista_coordenadas.currentItem()
         if item:
             texto = item.text()
-            partes = texto.split(',')
+            original, _ = texto.split(" || ")
+            partes = original.split(',')
             corte = int(partes[0].split(':')[1].strip())
             x = int(partes[1].split(':')[1].strip())
             y = int(partes[2].split(':')[1].strip())
@@ -332,7 +347,8 @@ class ExploradorCortes3D(QWidget):
         item = self.lista_coordenadas.currentItem()
         if item:
             texto = item.text()
-            partes = texto.split(',')
+            original, _ = texto.split(" || ")
+            partes = original.split(',')
             corte = int(partes[0].split(':')[1].strip())
             x = int(partes[1].split(':')[1].strip())
             y = int(partes[2].split(':')[1].strip())
