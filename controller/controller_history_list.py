@@ -255,15 +255,10 @@ class HistoryListController(HistoryListWidget):
         item_time = item.text().split(' | ')[0]
         item_name = item.text().split(' | ')[1].split('.')[0]
         self.current_output = item_time + " | " + item_name
+        to_poisitioning = item.text().split(' | ')[1]
 
         # Get the widget from history
         output = self.outputs[self.current_output]
-
-        # Add here image to positioning window
-        file = self.main.session['directory']+"/mat/"+item.text().split(' | ')[1]
-        self.main.parent.positioning_window.image_widget = ExploradorCortes3D(file)
-        self.main.parent.positioning_window.figures_layout.clear_figures_layout()
-        self.main.parent.positioning_window.figures_layout.addWidget(self.main.parent.positioning_window.image_widget)
 
         # Get rotations and shifts from history
         try:
@@ -299,6 +294,13 @@ class HistoryListController(HistoryListWidget):
                                        y_label=item['yLabel'],
                                        title=item['title'])
                 self.main.figures_layout.addWidget(image, row=item['row'] + 1, col=item['col'])
+
+                # Add here image to positioning window
+                file = self.main.session['directory'] + "/mat/" + to_positioning
+                self.main.parent.positioning_window.image_widget = ExploradorCortes3D(file)
+                self.main.parent.positioning_window.figures_layout.clear_figures_layout()
+                self.main.parent.positioning_window.figures_layout.addWidget(
+                    self.main.parent.positioning_window.image_widget)
             elif item['widget'] == 'curve':
                 plot = SpectrumPlot(x_data=item['xData'],
                                     y_data=item['yData'],
