@@ -255,7 +255,7 @@ class HistoryListController(HistoryListWidget):
         item_time = item.text().split(' | ')[0]
         item_name = item.text().split(' | ')[1].split('.')[0]
         self.current_output = item_time + " | " + item_name
-        to_poisitioning = item.text().split(' | ')[1]
+        to_positioning = item.text().split(' | ')[1]
 
         # Get the widget from history
         output = self.outputs[self.current_output]
