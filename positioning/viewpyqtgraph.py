@@ -2,7 +2,8 @@ import numpy as np
 import scipy.io as sp
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QHBoxLayout, QListWidget, QPushButton, QApplication
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QHBoxLayout, QListWidget, QPushButton, QApplication, \
+    QFileDialog
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from matplotlib.backend_bases import MouseEvent
@@ -10,36 +11,45 @@ import qdarkstyle
 from matplotlib import style
 import sys
 import configs.hw_config as hw
+import nibabel as nib
+
 
 
 class ExploradorCortes3D(QWidget):
-    def __init__(self, archivo):
+    def __init__(self):
         super().__init__()
 
         # Cargar el archivo .mat
-        self.datos_mat = sp.loadmat(archivo)
-        self.imagen = np.abs(self.datos_mat['image3D'])
-        self.ejes = self.datos_mat['axesOrientation'][0]
+        self.load_button = None
+        self.boton_ordenar_asc = None
+        self.boton_ordenar_desc = None
+        self.canvas = None
+        self.label = None
+        self.imagen_layout = None
+        self.slider = None
+        self.resolution = None
+        self.imagen = np.random.randn(10, 10, 10)
         self.num_cortes = self.imagen.shape[0]
+        self.resolution = np.array([1.0, 1.0, 1.0])
 
-        # Fix image orientation
-        if np.array_equal(self.ejes, [2, 1, 0]):
-            self.imagen = self.imagen[:, ::-1, ::-1]
-        elif np.array_equal(self.ejes, [1, 2, 0]):
-            # TODO: fix image orientation
-            print("WARNING: Image orientation may be wrong: please use image orientation [2, 1, 0]")
-        elif np.array_equal(self.ejes, [0, 1, 2]):
-            self.imagen = np.transpose(self.imagen, axes=(0, 2, 1))
-            self.imagen = self.imagen[:, ::-1, ::-1]
-        elif np.array_equal(self.ejes, [1, 0, 2]):
-            # TODO: fix image orientation
-            print("WARNING: Image orientation may be wrong: please use image orientation [0, 1, 2]")
-        elif np.array_equal(self.ejes, [0, 2, 1]):
-            self.imagen = np.transpose(self.imagen, axes=(0, 2, 1))
-            self.imagen = self.imagen[::-1, ::-1, ::-1]
-        elif np.array_equal(self.ejes, [2, 0, 1]):
-            # TODO: fix image orientation
-            print("WARNING: Image orientation may be wrong: please use image orientation [0, 2, 1]")
+        # # Fix image orientation
+        # if np.array_equal(self.ejes, [2, 1, 0]):
+        #     self.imagen = self.imagen[:, ::-1, ::-1]
+        # elif np.array_equal(self.ejes, [1, 2, 0]):
+        #     # TODO: fix image orientation
+        #     print("WARNING: Image orientation may be wrong: please use image orientation [2, 1, 0]")
+        # elif np.array_equal(self.ejes, [0, 1, 2]):
+        #     self.imagen = np.transpose(self.imagen, axes=(0, 2, 1))
+        #     self.imagen = self.imagen[:, ::-1, ::-1]
+        # elif np.array_equal(self.ejes, [1, 0, 2]):
+        #     # TODO: fix image orientation
+        #     print("WARNING: Image orientation may be wrong: please use image orientation [0, 1, 2]")
+        # elif np.array_equal(self.ejes, [0, 2, 1]):
+        #     self.imagen = np.transpose(self.imagen, axes=(0, 2, 1))
+        #     self.imagen = self.imagen[::-1, ::-1, ::-1]
+        # elif np.array_equal(self.ejes, [2, 0, 1]):
+        #     # TODO: fix image orientation
+        #     print("WARNING: Image orientation may be wrong: please use image orientation [0, 2, 1]")
 
         # Inicialización de variables
         self.puntos = []
@@ -56,6 +66,35 @@ class ExploradorCortes3D(QWidget):
 
         # Establecer el estilo de Matplotlib
         style.use('dark_background')  # Esto aplica un fondo oscuro y colores claros en los gráficos
+
+    def load_file(self):
+        """Load image data from an .npy or NIfTI file (.nii, .nii.gz)."""
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(
+            None,
+            "Select Image File",
+            "",
+            "Image Files (*.nii *.nii.gz);;All Files (*)",
+            options=options
+        )
+
+        if file_path:
+            # Load NIfTI file
+            nifti_img = nib.load(file_path)
+
+            # Get image data
+            image_data = nifti_img.get_fdata()
+            self.imagen = np.transpose(image_data, axes=(2, 1, 0))
+            self.imagen = self.imagen[:, ::-1, :]
+
+            # Get voxel dimensions (assuming affine matrix is diagonal)
+            self.resolution = np.abs(nifti_img.header.get_zooms())  # Voxel sizes in mm
+            self.resolution = self.resolution[[2, 1, 0]]
+
+            self.num_cortes = self.imagen.shape[0]
+            self.slider.setMaximum(self.num_cortes - 1)
+            self.slider.setValue(int(self.num_cortes // 2))
+            self.actualizar_imagen()
 
     def pixel2coord(self, pixel, item=None):
         """
@@ -79,44 +118,25 @@ class ExploradorCortes3D(QWidget):
         If resolution is [0.5, 0.5, 1.0] and axesOrientation is [2, 0, 1], then:
             pixel2coord([10, 20, 30]) -> [15.0, 10.0, 10.0]
         """
-        resolution = self.datos_mat['resolution'][0]
-        axes = self.datos_mat['axesOrientation'][0]
-        mapping = {0: 'x', 1: 'y', 2: 'z'}
-        axes_2 = [mapping[n] for n in axes]
-        nsl, nph, nrd = self.imagen.shape
+        resolution = self.resolution
+        axes = ['x', 'y', 'z']
+        nx, ny, nz = self.imagen.shape
         coord = [0.0, 0.0, 0.0]
-        if np.array_equal(axes, [2, 1, 0]):  # Transversal
-            coord[axes[2]] = + (pixel[0] - nsl / 2) * resolution[2]  # x-axis
-            coord[axes[0]] = - (pixel[1] - nrd / 2) * resolution[0]  # z-axis
-            coord[axes[1]] = + (pixel[2] - nph / 2) * resolution[1]  # y-axis
-        elif np.array_equal(axes, [1, 2, 0]):
-            # TODO: Fix image orientation
-            print("WARNING: Image orientation may be wrong: please use image orientation [2, 1, 0]")
-        elif np.array_equal(axes, [0, 1, 2]):  # Sagittal
-            coord[axes[2]] = + (pixel[0] - nsl / 2) * resolution[2]  # z-axis
-            coord[axes[1]] = + (pixel[1] - nph / 2) * resolution[1]  # y-axis
-            coord[axes[0]] = - (pixel[2] - nrd / 2) * resolution[0]  # x-axis
-        elif np.array_equal(axes, [1, 0, 2]):
-            # TODO: Fix image orientation
-            print("WARNING: Image orientation may be wrong: please use image orientation [1, 0, 2]")
-        elif np.array_equal(axes, [0, 2, 1]):  # Coronal
-            coord[axes[2]] = + (pixel[0] - nsl / 2) * resolution[2]  # y-axis
-            coord[axes[1]] = - (pixel[1] - nph / 2) * resolution[1]  # z-axis
-            coord[axes[0]] = - (pixel[2] - nrd / 2) * resolution[0]  # x-axis
-        elif np.array_equal(axes, [1, 0, 2]):
-            # TODO: Fix image orientation
-            print("WARNING: Image orientation may be wrong: please use image orientation [0, 2, 1]")
+        coord[0] = + (pixel[0] - nx / 2) * resolution[0]  # x-axis
+        coord[1] = + (pixel[2] - ny / 2) * resolution[1]  # z-axis
+        coord[2] = - (pixel[1] - nz / 2) * resolution[2]  # y-axis
+        # Note pixel is [x, z, y]
 
         if item == None:
             self.lista_coordenadas.addItem(f"Corte: {pixel[0]}, X: {pixel[1]}, Y: {pixel[2]} || " +
-                "%s: %0.0f mm, %s: %0.0f mm, %s: %0.0f mm" % (axes_2[0], coord[0] * 1e3,
-                                                              axes_2[1], coord[1] * 1e3,
-                                                              axes_2[2], coord[2] * 1e3))
+                "%s: %0.0f mm, %s: %0.0f mm, %s: %0.0f mm" % (axes[0], coord[0],
+                                                              axes[1], coord[1],
+                                                              axes[2], coord[2]))
         else:
             item.setText(f"Corte: {pixel[0]}, X: {pixel[1]}, Y: {pixel[2]} || " +
-                "%s: %0.0f mm, %s: %0.0f mm, %s: %0.0f mm" % (axes_2[0], coord[0] * 1e3,
-                                                              axes_2[1], coord[1] * 1e3,
-                                                              axes_2[2], coord[2] * 1e3))
+                "%s: %0.0f mm, %s: %0.0f mm, %s: %0.0f mm" % (axes[0], coord[0],
+                                                              axes[1], coord[1],
+                                                              axes[2], coord[2]))
 
         return coord
 
@@ -126,10 +146,16 @@ class ExploradorCortes3D(QWidget):
 
         layout = QHBoxLayout()
 
-        # Layout para la imagen
+        # Load button
         self.imagen_layout = QVBoxLayout()
+        self.load_button = QPushButton("Load image")
+        self.imagen_layout.addWidget(self.load_button)
+        self.load_button.clicked.connect(self.load_file)
+
+        # Layout para la imagen
         self.canvas = FigureCanvas(plt.Figure(figsize=(8, 8)))
         self.imagen_layout.addWidget(self.canvas)
+
 
         # Barra de desplazamiento
         self.slider = QSlider(Qt.Horizontal)
@@ -402,6 +428,6 @@ class ExploradorCortes3D(QWidget):
 
 if __name__=="__main__":
     app = QApplication(sys.argv)
-    window = ExploradorCortes3D('RARE_TRA.mat')
+    window = ExploradorCortes3D()
     window.show()
     sys.exit(app.exec_())
