@@ -12,6 +12,69 @@ from PyQt5.QtWidgets import QGroupBox, QSizePolicy, QLabel, QLineEdit, QPushButt
 from positioning.robot import Robot
 
 
+def get_center(points):
+    """Computes the centroid of three 3D points."""
+    if len(points) != 3:
+        raise ValueError("Exactly three points are required")
+
+    x_center = sum(p[0] for p in points) / 3
+    y_center = sum(p[1] for p in points) / 3
+    z_center = sum(p[2] for p in points) / 3
+
+    return (x_center, y_center, z_center)
+
+def get_distances(points):
+    """Computes the distances between three 3D points."""
+    if len(points) != 3:
+        raise ValueError("Exactly three points are required")
+
+    # points
+    pa = np.array(points[0])
+    pb = np.array(points[1])
+    pc = np.array(points[2])
+
+    # Distance between a and b
+    pba = pb - pa
+    dba = np.sqrt(pba[0] ** 2 + pba[1] ** 2 + pba[2] ** 2)
+    print(f"AB = {round(dba, 1)} mm")
+
+    # Distance between a and c
+    pca = pc - pa
+    dca = np.sqrt(pca[0] ** 2 + pca[1] ** 2 + pca[2] ** 2)
+    print(f"AC = {round(dca, 1)} mm")
+
+    # Distance between b and c
+    pcb = pc - pb
+    dcb = np.sqrt(pcb[0] ** 2 + pcb[1] ** 2 + pcb[2] ** 2)
+    print(f"BC = {round(dcb, 1)} mm")
+
+def compute_euler_angles(a, b, c):
+    """Computes the Euler angles from three 3D points."""
+    # Step 1: Compute vectors defining the plane
+    ab = b - a
+    ca = a - c
+
+    # Step 2: Compute the new x' axis (normal to the plane)
+    x_new = np.cross(ab, ca)
+    x_new = x_new / np.linalg.norm(x_new)  # Normalize
+
+    # Step 3: Define new z' axis (aligned with v1)
+    z_new = ab / np.linalg.norm(ab)
+
+    # Step 4: Compute new y' axis (perpendicular to x' and z')
+    y_new = np.cross(z_new, x_new)
+    y_new = y_new / np.linalg.norm(y_new)  # Normalize
+
+    # Step 5: Construct the rotation matrix
+    R_matrix = np.column_stack((x_new, y_new, z_new))
+
+    # Step 6: Convert rotation matrix to Euler angles (ZYX convention)
+    euler_angles = Rotation.from_matrix(R_matrix).as_euler('xyz', degrees=True)
+    euler_angles = [-angle for angle in euler_angles]
+
+    return euler_angles
+
+
 class WidgetManualControl(QGroupBox):
     def __init__(self, main):
         super().__init__("Manual Control")
@@ -81,11 +144,14 @@ class WidgetManualControl(QGroupBox):
         buttons_layout.addWidget(self.button_home)
 
         # Create and add the "Go Back" button
-        self.button_go_back = QPushButton("Go Back")
+        self.button_go_back = QPushButton("Go back")
         buttons_layout.addWidget(self.button_go_back)
 
-        self.button_position = QPushButton("Get Position")
+        self.button_position = QPushButton("Get position")
         buttons_layout.addWidget(self.button_position)
+
+        self.button_target = QPushButton("Get target position")
+        buttons_layout.addWidget(self.button_target)
 
         # Set the layout
         self.setLayout(layout)
@@ -95,6 +161,7 @@ class WidgetManualControl(QGroupBox):
         self.button_home.clicked.connect(self.home_clicked)
         self.button_go_back.clicked.connect(self.go_back_clicked)
         self.button_position.clicked.connect(self.get_position_clicked)
+        self.button_target.clicked.connect(self.get_target_clicked)
 
         # Connect the QLineEdit to their handlers
         for line_edit in self.o_ima_edits:
@@ -115,7 +182,7 @@ class WidgetManualControl(QGroupBox):
         self.positions_ima = [pos_ima]  # Store positions in image
         self.positions_hex = [pos_hex]  # Store positions of hexapod
 
-    def get_position_clicked(self):
+    def get_target_clicked(self):
         """
         Computes the centroid and Euler angles based on three selected MRI points and updates the UI.
 
@@ -123,52 +190,12 @@ class WidgetManualControl(QGroupBox):
         determines the Euler angles representing the orientation of the plane they define, and updates
         the corresponding UI text fields.
 
-        Methods:
-        - get_center(points): Computes the centroid of three 3D points.
-        - compute_euler_angles(A, B, C): Computes the Euler angles from three 3D points.
-
         Raises:
         - ValueError: If the number of selected points is not exactly three.
 
         Updates:
         - QTextEdit fields in `self.o_ima_edits` with the computed centroid coordinates (in mm) and Euler angles.
         """
-
-        def get_center(points):
-            if len(points) != 3:
-                raise ValueError("Exactly three points are required")
-
-            x_center = sum(p[0] for p in points) / 3
-            y_center = sum(p[1] for p in points) / 3
-            z_center = sum(p[2] for p in points) / 3
-
-            return (x_center, y_center, z_center)
-
-        def compute_euler_angles(a, b, c):
-            # Step 1: Compute vectors defining the plane
-            ab = b - a
-            ca = a - c
-
-            # Step 2: Compute the new x' axis (normal to the plane)
-            x_new = np.cross(ab, ca)
-            x_new = x_new / np.linalg.norm(x_new)  # Normalize
-
-            # Step 3: Define new z' axis (aligned with v1)
-            z_new = ab / np.linalg.norm(ab)
-
-            # Step 4: Compute new y' axis (perpendicular to x' and z')
-            y_new = np.cross(z_new, x_new)
-            y_new = y_new / np.linalg.norm(y_new)  # Normalize
-
-            # Step 5: Construct the rotation matrix
-            R_matrix = np.column_stack((x_new, y_new, z_new))
-
-            # Step 6: Convert rotation matrix to Euler angles (ZYX convention)
-            euler_angles = Rotation.from_matrix(R_matrix).as_euler('xyz', degrees=True)
-            euler_angles = [-angle for angle in euler_angles]
-
-            return euler_angles
-
         # Retrieve selected points from the MRI interface
         try:
             points_mri = self.main.image_widget.puntos_real
@@ -185,7 +212,45 @@ class WidgetManualControl(QGroupBox):
                                                 np.array(points_mri[2]))
 
             # Update the QTextEdits with centroid (converted to mm) and Euler angles
-            coord = [centroid[0] * 1e3, centroid[1] * 1e3, centroid[2] * 1e3,
+            coord = [centroid[0], centroid[1], centroid[2],
+                     euler_angles[0], euler_angles[1], euler_angles[2]]
+
+            for n, edit in enumerate(self.t_ima_edits):
+                edit.setText("%0.1f" % coord[n])
+
+    def get_position_clicked(self):
+        """
+        Computes the centroid and Euler angles based on three selected MRI points and updates the UI.
+
+        This function retrieves three 3D points selected in the MRI image, calculates their centroid,
+        determines the Euler angles representing the orientation of the plane they define, and updates
+        the corresponding UI text fields.
+
+        Raises:
+        - ValueError: If the number of selected points is not exactly three.
+
+        Updates:
+        - QTextEdit fields in `self.o_ima_edits` with the computed centroid coordinates (in mm) and Euler angles.
+        """
+
+        # Retrieve selected points from the MRI interface
+        try:
+            points_mri = self.main.image_widget.puntos_real
+        except AttributeError:
+            print("ERROR: no link to image_widget.")
+            return
+
+        if len(points_mri) != 3:
+            print("You need 3 points to get the coordinates")
+        else:
+            centroid = get_center(points_mri)
+            euler_angles = compute_euler_angles(np.array(points_mri[0]),
+                                                np.array(points_mri[1]),
+                                                np.array(points_mri[2]))
+            get_distances(points_mri)
+
+            # Update the QTextEdits with centroid (converted to mm) and Euler angles
+            coord = [centroid[0], centroid[1], centroid[2],
                      euler_angles[0], euler_angles[1], euler_angles[2]]
 
             for n, edit in enumerate(self.o_ima_edits):

@@ -79,23 +79,7 @@ class PositioningWindow(QWidget):
         """
         Load raw data from a .mat file and update the image view widget.
         """
-        # Prompt the user to select a .mat file
-        if file_path is None:
-            file_path = self.loadmatFile()
-            file_name = os.path.basename(file_path)
-        else:
-            file_path = file_path+file_name
-
-        # Load the .mat file and get the image and axes
-        self.mat_data = sp.io.loadmat(file_path)
-        image = np.abs(self.mat_data['image3D'])
-        axes = self.mat_data['axesOrientation'][0]
-
-        # Fix image orientation
-        image, x_label, y_label, title = self.fixImage(image, axes)
-
-        # Create the plot widget and add it to the figures_layout
-        self.image_widget = ExploradorCortes3D(file_path)
+        self.image_widget = ExploradorCortes3D()
         self.figures_layout.clear_figures_layout()
         self.figures_layout.addWidget(self.image_widget)
 

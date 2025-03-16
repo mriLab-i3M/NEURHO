@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.io as sp
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QHBoxLayout, QListWidget, QPushButton, QApplication, \
     QFileDialog
@@ -31,25 +32,6 @@ class ExploradorCortes3D(QWidget):
         self.imagen = np.random.randn(10, 10, 10)
         self.num_cortes = self.imagen.shape[0]
         self.resolution = np.array([1.0, 1.0, 1.0])
-
-        # # Fix image orientation
-        # if np.array_equal(self.ejes, [2, 1, 0]):
-        #     self.imagen = self.imagen[:, ::-1, ::-1]
-        # elif np.array_equal(self.ejes, [1, 2, 0]):
-        #     # TODO: fix image orientation
-        #     print("WARNING: Image orientation may be wrong: please use image orientation [2, 1, 0]")
-        # elif np.array_equal(self.ejes, [0, 1, 2]):
-        #     self.imagen = np.transpose(self.imagen, axes=(0, 2, 1))
-        #     self.imagen = self.imagen[:, ::-1, ::-1]
-        # elif np.array_equal(self.ejes, [1, 0, 2]):
-        #     # TODO: fix image orientation
-        #     print("WARNING: Image orientation may be wrong: please use image orientation [0, 1, 2]")
-        # elif np.array_equal(self.ejes, [0, 2, 1]):
-        #     self.imagen = np.transpose(self.imagen, axes=(0, 2, 1))
-        #     self.imagen = self.imagen[::-1, ::-1, ::-1]
-        # elif np.array_equal(self.ejes, [2, 0, 1]):
-        #     # TODO: fix image orientation
-        #     print("WARNING: Image orientation may be wrong: please use image orientation [0, 2, 1]")
 
         # Inicialización de variables
         self.puntos = []
@@ -129,12 +111,12 @@ class ExploradorCortes3D(QWidget):
 
         if item == None:
             self.lista_coordenadas.addItem(f"Corte: {pixel[0]}, X: {pixel[1]}, Y: {pixel[2]} || " +
-                "%s: %0.0f mm, %s: %0.0f mm, %s: %0.0f mm" % (axes[0], coord[0],
+                "%s: %0.1f mm, %s: %0.1f mm, %s: %0.1f mm" % (axes[0], coord[0],
                                                               axes[1], coord[1],
                                                               axes[2], coord[2]))
         else:
             item.setText(f"Corte: {pixel[0]}, X: {pixel[1]}, Y: {pixel[2]} || " +
-                "%s: %0.0f mm, %s: %0.0f mm, %s: %0.0f mm" % (axes[0], coord[0],
+                "%s: %0.1f mm, %s: %0.1f mm, %s: %0.1f mm" % (axes[0], coord[0],
                                                               axes[1], coord[1],
                                                               axes[2], coord[2]))
 
@@ -248,10 +230,11 @@ class ExploradorCortes3D(QWidget):
             self.canvas.figure.subplots_adjust(left=0, right=1, top=1, bottom=0)
 
             # Dibujar los puntos
-            for punto in self.puntos:
-                corte, x, y, color = punto
+            for corte, x, y, color in self.puntos:
                 if corte == indice_corte:
+                    roi = patches.Circle((x, y), radius=3, color=color[0], fill=False, linewidth=2)
                     ax.plot(x, y, color, markersize=10)
+                    ax.add_patch(roi)
 
             self.canvas.draw()
 
@@ -264,7 +247,7 @@ class ExploradorCortes3D(QWidget):
     def on_click(self, event: MouseEvent):
         """Maneja el evento de clic sobre la imagen."""
         if event.inaxes is not None:
-            x, y = int(event.xdata), int(event.ydata)
+            x, y = round(event.xdata, 1), round(event.ydata, 1)
             corte_actual = self.slider.value()
             clicked_point = self.get_clicked_point(corte_actual, x, y)
 
@@ -297,7 +280,7 @@ class ExploradorCortes3D(QWidget):
     def on_drag(self, event: MouseEvent):
         """Maneja el evento de arrastre del punto."""
         if self.selected_point and event.inaxes is not None and event.button == 1:
-            new_x, new_y = int(event.xdata), int(event.ydata)
+            new_x, new_y = np.round(event.xdata, 1), np.round(event.ydata, 1)
             self.selected_point[1] = new_x
             self.selected_point[2] = new_y
             self.selected_point[3] = 'r+'
@@ -322,9 +305,9 @@ class ExploradorCortes3D(QWidget):
             texto = selected_item.text()
             original, _ = texto.split(" || ")
             partes = original.split(',')
-            corte = int(partes[0].split(':')[1].strip())
-            x = int(partes[1].split(':')[1].strip())
-            y = int(partes[2].split(':')[1].strip())
+            corte = float(partes[0].split(':')[1].strip())
+            x = float(partes[1].split(':')[1].strip())
+            y = float(partes[2].split(':')[1].strip())
             return punto[0] == corte and punto[1] == x and punto[2] == y
         return False
 
@@ -351,11 +334,11 @@ class ExploradorCortes3D(QWidget):
             texto = item.text()
             original, _ = texto.split(" || ")
             partes = original.split(',')
-            corte = int(partes[0].split(':')[1].strip())
-            x = int(partes[1].split(':')[1].strip())
-            y = int(partes[2].split(':')[1].strip())
+            corte = float(partes[0].split(':')[1].strip())
+            x = float(partes[1].split(':')[1].strip())
+            y = float(partes[2].split(':')[1].strip())
 
-            self.slider.setValue(corte)
+            self.slider.setValue(int(corte))
             self.actualizar_imagen()
 
             self.selected_point = self.get_clicked_point(corte, x, y)
@@ -375,9 +358,9 @@ class ExploradorCortes3D(QWidget):
             texto = item.text()
             original, _ = texto.split(" || ")
             partes = original.split(',')
-            corte = int(partes[0].split(':')[1].strip())
-            x = int(partes[1].split(':')[1].strip())
-            y = int(partes[2].split(':')[1].strip())
+            corte = float(partes[0].split(':')[1].strip())
+            x = float(partes[1].split(':')[1].strip())
+            y = float(partes[2].split(':')[1].strip())
 
             punto_a_eliminar = None
             n = 0
