@@ -156,8 +156,11 @@ class ExploradorCortes3D(QWidget):
             image_data = nifti_img.get_fdata()
             # Se crean los tres volúmenes con las transposiciones indicadas
             self.image_axial = np.transpose(image_data, axes=(2, 1, 0))
+            self.image_axial = self.image_axial[:, ::-1, :]
             self.image_sagital = np.transpose(image_data, (1, 0, 2))
+            self.image_sagital = self.image_sagital[::-1, :, :]
             self.image_coronal = np.transpose(image_data, (2, 0, 1))
+            self.image_coronal = self.image_coronal[:, :, ::-1]
             # Para cálculos de coordenadas se usa la vista axial
             self.imagen = self.image_axial
             self.resolution = np.abs(nifti_img.header.get_zooms())
@@ -335,10 +338,10 @@ class ExploradorCortes3D(QWidget):
             self.canvas.figure.clf()
             ax = self.canvas.figure.add_subplot(111)
             imagen_ajustada = self.apply_brightness_contrast(imagen_corte)
-            vmin = np.min(imagen_corte)
-            vmax = np.max(imagen_corte)
+            self.vmin = np.min(imagen_corte)
+            self.vmax = np.max(imagen_corte)
             ax.imshow(imagen_ajustada, cmap='gray', interpolation='bilinear',
-                      aspect='auto', vmin=vmin, vmax=vmax)
+                      aspect='auto', vmin=self.vmin, vmax=self.vmax)
             ax.set_facecolor('black')
             ax.set_title(f'Corte {indice_corte}', color='white')
             ax.axis('off')
@@ -368,10 +371,8 @@ class ExploradorCortes3D(QWidget):
                 x_index = self.image_sagital.shape[1] // 2
             image_sagital = self.image_sagital[:, x_index, :]
             imagen_ajustada = self.apply_brightness_contrast(image_sagital)
-            vmin = np.min(image_sagital)
-            vmax = np.max(image_sagital)
             ax.imshow(imagen_ajustada, cmap='gray', interpolation='bilinear',
-                      aspect='auto', vmin=vmin, vmax=vmax)
+                      aspect='auto', vmin=self.vmin, vmax=self.vmax)
             ax.set_facecolor('black')
             ax.set_title(f"Sagital (Columna = {x_index})", color='white')
             ax.axis('off')
@@ -392,10 +393,8 @@ class ExploradorCortes3D(QWidget):
                 y_index = self.image_coronal.shape[2] // 2
             image_coronal = self.image_coronal[:, :, y_index]
             imagen_ajustada = self.apply_brightness_contrast(image_coronal)
-            vmin = np.min(image_coronal)
-            vmax = np.max(image_coronal)
             ax.imshow(imagen_ajustada, cmap='gray', interpolation='bilinear',
-                      aspect='auto', vmin=vmin, vmax=vmax)
+                      aspect='auto', vmin=self.vmin, vmax=self.vmax)
             ax.set_facecolor('black')
             ax.set_title(f"Coronal (Fila = {y_index})", color='white')
             ax.axis('off')
