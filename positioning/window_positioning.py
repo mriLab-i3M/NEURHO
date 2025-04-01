@@ -4,11 +4,9 @@
 @affiliation:MRILab, i3M, CSIC, Valencia, Spain
 """
 import copy
-import os
 import sys
 
 import numpy as np
-import scipy as sp
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QFileDialog
 import qdarkstyle
 from positioning.widget_manual_control import WidgetManualControl

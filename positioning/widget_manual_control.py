@@ -1,4 +1,3 @@
-import threading
 import sys
 
 import numpy as np
@@ -11,17 +10,14 @@ from PyQt5.QtWidgets import QGroupBox, QSizePolicy, QLabel, QLineEdit, QPushButt
 
 from positioning.robot import Robot
 
-
 def get_center(points):
     """Computes the centroid of three 3D points."""
     if len(points) != 3:
         raise ValueError("Exactly three points are required")
+    p_prov = (np.array(points[0]) + np.array(points[1])) / 2.0
+    r_center = (p_prov * 70 + np.array(points[2]) * 60.62) / 130.62
 
-    x_center = sum(p[0] for p in points) / 3
-    y_center = sum(p[1] for p in points) / 3
-    z_center = sum(p[2] for p in points) / 3
-
-    return (x_center, y_center, z_center)
+    return r_center[0], r_center[1], r_center[2]
 
 def get_distances(points):
     """Computes the distances between three 3D points."""

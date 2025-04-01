@@ -9,9 +9,6 @@ import imageio.v2 as imageio
 from controller.controller_plot3d import Plot3DController as Spectrum3DPlot
 from widgets.widget_figures import FiguresLayoutWidget
 
-import itk
-import numpy as np
-
 class FiguresLayoutController(FiguresLayoutWidget):
     """
     Controller for figures layout
