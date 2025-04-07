@@ -155,14 +155,13 @@ class ExploradorCortes3D(QWidget):
             nifti_img = nib.load(file_path)
             image_data = nifti_img.get_fdata()
             self.affine = nifti_img.affine
-            self.affine = self.affine[::-1]
             # Se crean los tres volúmenes con las transposiciones indicadas
             self.image_axial = np.transpose(image_data, axes=(2, 1, 0))
-            self.image_axial = self.image_axial[:, ::-1, :]
+            self.image_axial = self.image_axial[:, ::-1, ::-1]
             self.image_sagital = np.transpose(image_data, (1, 0, 2))
-            self.image_sagital = self.image_sagital[::-1, :, :]
+            self.image_sagital = self.image_sagital[::-1, ::-1, :]
             self.image_coronal = np.transpose(image_data, (2, 0, 1))
-            self.image_coronal = self.image_coronal[:, :, ::-1]
+            self.image_coronal = self.image_coronal[:, ::-1, ::-1]
             # Para cálculos de coordenadas se usa la vista axial
             self.imagen = self.image_axial
             self.resolution = np.abs(nifti_img.header.get_zooms())
@@ -176,33 +175,55 @@ class ExploradorCortes3D(QWidget):
 
     def pixel2coord(self, pixel, item=None):
         """
-        Converts pixel coordinates to real-world coordinates based on resolution
-        and axis orientation.
+        Convert image pixel indices to real-world spatial coordinates.
+
+        This method uses the image's affine transformation matrix to convert
+        pixel coordinates (slice, row, column) into physical coordinates (x, y, z),
+        taking into account image resolution and orientation.
 
         Parameters:
-        pixel (tuple or list): A 3-element iterable representing the pixel coordinates
-                               (slice, px, py) in the image matrix.
+        ----------
+        pixel : tuple or list of int
+            A 3-element iterable specifying the pixel location as (slice, x, y).
+
+        item : QtWidgets.QGraphicsTextItem, optional
+            If provided, the method will also update the item's text with
+            formatted pixel and spatial coordinate information.
 
         Returns:
-        list: A 3-element list representing the real-world coordinates (x, y, z).
+        -------
+        list of float
+            The corresponding real-world (x, y, z) coordinates in millimeters.
 
-        Note:
-        - `self.datos_mat['resolution']` should be a list or tuple containing the
-          voxel size in readout, phase and slice directions.
-        - `self.datos_mat['axesOrientation']` should define the mapping between
-          pixel indices and coordinate system axes.
-
-        Example:
-        If resolution is [0.5, 0.5, 1.0] and axesOrientation is [2, 0, 1], then:
-            pixel2coord([10, 20, 30]) -> [15.0, 10.0, 10.0]
+        Notes:
+        -----
+        - The affine transformation matrix (`self.affine`) maps voxel indices to
+          real-world coordinates.
+        - The method assumes axis inversion for the second spatial coordinate
+          to match with the scanner convention
         """
-        resolution = self.resolution
+
+        def get_original_index(i0, j0, k0, ni, nj, nk):
+            i1 = i0
+            j1 = nj - j0
+            k1 = nk - k0
+            i2 = k1
+            j2 = j1
+            k2 = i1
+
+            return i2, j2, k2
+
         axes = ['x', 'y', 'z']
         nx, ny, nz = self.imagen.shape
-        coord = [0.0, 0.0, 0.0]
-        coord[0] = (pixel[0] - nx/2) * resolution[0] + self.affine[0]
-        coord[1] = (pixel[2] - ny/2) * resolution[1] + self.affine[1]
-        coord[2] = - (pixel[1] - nz/2) * resolution[2] - self.affine[2]
+
+        # Get coordinates according to affine
+        i, j, k = get_original_index(pixel[0], pixel[2], pixel[1], nx, ny, nz)
+        coord = np.array([i, j, k, 1])
+        coord = self.affine @ coord
+        coord = coord[0:3]
+        coord = coord[::-1]
+        coord[1] = - coord[1]
+
         if item is not None:
             item.setText(
                 f"Corte: {pixel[0]}, X: {pixel[1]}, Y: {pixel[2]} || "

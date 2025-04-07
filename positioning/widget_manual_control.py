@@ -75,7 +75,7 @@ class WidgetManualControl(QGroupBox):
     def __init__(self, main):
         super().__init__("Manual Control")
         self.main = main
-        self.mode = "Absolute"  # "Absolute" or "Relative"
+        self.mode = "Relative"  # "Absolute" or "Relative"
 
         # Connect to fus robot
         self.fus_robot = Robot()
@@ -350,8 +350,8 @@ class WidgetManualControl(QGroupBox):
         # thread.start()
         self.go_to()
 
-        r_ima_target, _ = self.get_hex_position('target')
-        self.set_position(point='origin', coordinates=r_ima_target)
+        # r_ima_target, _ = self.get_hex_position('target')
+        # self.set_position(point='origin', coordinates=r_ima_target)
 
     def go_to(self):
         def go_to_absolute():
@@ -369,13 +369,40 @@ class WidgetManualControl(QGroupBox):
             print(position)
 
             # Move the robot
-            if self.fus_robot.move(position=position):
+            if self.fus_robot.move(position=position, mode='absolute'):
                 # Store the positions
                 self.positions_ima.append(r_ima_target)
                 self.positions_hex.append(r_hex_target)
 
         def go_to_relative():
-            pass
+            # Get hexapod target coordinates
+            r_ima_target, r_hex_target = self.get_hex_position('target')
+            
+            # Get hexapod origin coordinates
+            r_ima_origin, r_hex_origin = self.get_hex_position('origin')
+
+            # Fix coordinate system to smc and hexapod
+            position_target = [r_hex_target[0] + hw.pole_length - hw.fus_home[0],
+                               r_hex_target[1] - hw.fus_home[1],
+                               r_hex_target[2] - hw.fus_home[2],
+                               + r_hex_target[4],
+                               + r_hex_target[5],
+                               - r_hex_target[3]]
+
+            position_origin = [r_hex_origin[0] + hw.pole_length - hw.fus_home[0],
+                               r_hex_origin[1] - hw.fus_home[1],
+                               r_hex_origin[2] - hw.fus_home[2],
+                               + r_hex_origin[4],
+                               + r_hex_origin[5],
+                               - r_hex_origin[3]]
+
+            displacement = np.array(position_target)-np.array(position_origin)
+
+            # Move the robot
+            if self.fus_robot.move(position=displacement, mode='relative'):
+                # Store the positions
+                self.positions_ima.append(r_ima_target)
+                self.positions_hex.append(r_hex_target)
 
         print("Moving FUS...")
         if self.mode == "Absolute":
@@ -388,7 +415,9 @@ class WidgetManualControl(QGroupBox):
         def go_home():
             # Set target to Zero
             self.set_position(point="target", coordinates=hw.fus_home)
+            self.mode = "Absolute"
             self.go_to()
+            self.mode = "Relative"
 
         go_home()
 

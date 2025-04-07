@@ -1,6 +1,7 @@
 from positioning.smc_jxc91 import actuator_smc
 from positioning.bora import Bora
 import threading
+import numpy as np
 
 
 class Robot:
@@ -18,6 +19,7 @@ class Robot:
         threads = []
         self.smc_devices = [None] * 3  # Initialize a list to store SMC actuators
         self.bora = None  # Initialize to store the Bora hexapod
+        self.position = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
         # Create and start a thread for each SMC initialization
         for ii, axis in enumerate(['x', 'y', 'z']):
@@ -50,7 +52,7 @@ class Robot:
         """
         self.bora = Bora()
 
-    def move(self, position=None):
+    def move(self, position=None, mode='relative'):
         """
         Moves the robot to the specified position by controlling the SMC actuators
         and the Bora hexapod in parallel using threads.
@@ -66,11 +68,20 @@ class Robot:
         Returns:
             bool: True when movement is completed.
         """
-        # Get position
-        if position is None:
-            position = [0, 0, 0, 0, 0, 0]
-        smc_position = position[:3]
-        bora_position = (0, 0, 0, 0, position[3], position[4], position[5])
+        if mode == 'absolute':
+            # Get position
+            if position is None:
+                position = [0, 0, 0, 0, 0, 0]
+            self.position = position
+            smc_position = position[:3]
+            bora_position = (0, 0, 0, 0, position[3], position[4], position[5])
+        elif mode == 'relative':
+            if position is None:
+                position = np.array([0, 0, 0, 0, 0, 0])
+            self.position = self.position + position
+            smc_position = self.position[:3]
+            bora_position = (0, 0, 0, 0, self.position[3], self.position[4], self.position[5])
+
 
         # Create a list of threads
         threads = []
