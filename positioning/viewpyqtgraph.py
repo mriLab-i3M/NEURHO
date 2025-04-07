@@ -154,6 +154,8 @@ class ExploradorCortes3D(QWidget):
         if file_path:
             nifti_img = nib.load(file_path)
             image_data = nifti_img.get_fdata()
+            self.affine = nifti_img.affine
+            self.affine = self.affine[::-1]
             # Se crean los tres volúmenes con las transposiciones indicadas
             self.image_axial = np.transpose(image_data, axes=(2, 1, 0))
             self.image_axial = self.image_axial[:, ::-1, :]
@@ -198,9 +200,9 @@ class ExploradorCortes3D(QWidget):
         axes = ['x', 'y', 'z']
         nx, ny, nz = self.imagen.shape
         coord = [0.0, 0.0, 0.0]
-        coord[0] = (pixel[0] - nx/2) * resolution[0]
-        coord[1] = (pixel[2] - ny/2) * resolution[1]
-        coord[2] = - (pixel[1] - nz/2) * resolution[2]
+        coord[0] = (pixel[0] - nx/2) * resolution[0] + self.affine[0]
+        coord[1] = (pixel[2] - ny/2) * resolution[1] + self.affine[1]
+        coord[2] = - (pixel[1] - nz/2) * resolution[2] - self.affine[2]
         if item is not None:
             item.setText(
                 f"Corte: {pixel[0]}, X: {pixel[1]}, Y: {pixel[2]} || "
