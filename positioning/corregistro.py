@@ -310,27 +310,64 @@ class Corregistro3D(QWidget):
     # ——— Carga de imágenes ———
     def load_image_fija(self):
         path, _ = QFileDialog.getOpenFileName(self, "Imagen fija", "", "NIfTI (*.nii *.nii.gz)")
-        if not path: return
-        self.img1 = nib.load(path).get_fdata()
-        self.update_sliders()    # centrar al cargar fija
+        if not path:
+            return
+
+        img = nib.load(path)
+        self.img1 = img.get_fdata()
+        self.spacing_mm_1 = img.header.get_zooms()[:3]
+        self.affine_1 = img.affine
+
+        # Get voxel grid shape
+        shape = self.img1.shape  # (X, Y, Z)
+
+        # Generate voxel indices grid
+        i = np.arange(shape[0])
+        j = np.arange(shape[1])
+        k = np.arange(shape[2])
+        I, J, K = np.meshgrid(i, j, k, indexing='ij')
+
+        # Flatten and stack as homogeneous coordinates (N, 4)
+        ones = np.ones(I.size)
+        ijk = np.vstack([I.ravel(), J.ravel(), K.ravel(), ones])  # shape (4, N)
+
+        # Apply affine to get world coordinates (4, N)
+        self.xyz_world = self.affine_1 @ ijk  # shape (4, N)
+
+        # Reshape to (X, Y, Z, 3)
+        self.mesh_coords = self.xyz_world[:3].T.reshape(shape + (3,))
+
+        # GUI updates
+        self.update_sliders()
         self.reset_cache()
         self.update_views()
 
     def load_image_transformar(self):
         path, _ = QFileDialog.getOpenFileName(self, "Imagen a transformar", "", "NIfTI (*.nii *.nii.gz)")
-        if not path: return
+        if not path:
+            return
+
         self.img2_path = path
-        img = nib.load(path); self.img2 = img.get_fdata()
+        img = nib.load(path)
+        self.img2 = img.get_fdata()
+        self.affine_2 = img.affine
         self.spacing_mm = img.header.get_zooms()[:3]
         self.update_mm_labels()
-        # redimensionar si difieren
+
+        # Resample img2 to match img1's space
         if self.img1 is not None and self.img1.shape != self.img2.shape:
-            #QMessageBox.information(self,"Redimensionando",f"De {self.img2.shape} a {self.img1.shape}")
-            self.img2 = scipy.ndimage.zoom(
-                self.img2,
-                np.array(self.img1.shape)/np.array(self.img2.shape),
-                order=1
-            )
+            # transform world coords into img2 voxel space
+            affine2_inv = np.linalg.inv(self.affine_2)
+            ijk2 = affine2_inv @ self.xyz_world  # (4, N)
+
+            # interpolate img2 at those coordinates
+            shape1 = self.img1.shape
+            coords = [ijk2[axis, :].reshape(shape1) for axis in range(3)]
+            self.img2 = scipy.ndimage.map_coordinates(self.img2, coords, order=1, mode='nearest')
+
+            # Now both image 1 and 2 have the same affine matrix
+            self.affine_2 = self.affine_1
+
         # leer parámetros embebidos
         try:
             for ext in img.header.extensions:
