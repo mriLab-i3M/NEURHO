@@ -163,12 +163,12 @@ class Corregistro3D(QWidget):
         # Definir etiquetas como atributos si necesitas reutilizarlas
         self.spacing_mm = (1.0, 1.0, 1.0)  # valor por defecto hasta cargar imagen
 
-        self.tx_label = QLabel("Traslación X: 0.0 mm")
+        self.tx_label = QLabel("Traslación Z: 0.0 mm")
         self.ty_label = QLabel("Traslación Y: 0.0 mm")
-        self.tz_label = QLabel("Traslación Z: 0.0 mm")
-        self.rx_label = QLabel("Rotación X: 0°")
+        self.tz_label = QLabel("Traslación X: 0.0 mm")
+        self.rx_label = QLabel("Rotación Z: 0°")
         self.ry_label = QLabel("Rotación Y: 0°")
-        self.rz_label = QLabel("Rotación Z: 0°")
+        self.rz_label = QLabel("Rotación X: 0°")
 
         for s, rng, lbl, row in [
             (self.slider_tx, (-50, 50), self.tx_label, 0),
@@ -184,7 +184,7 @@ class Corregistro3D(QWidget):
             if "Traslación" in lbl.text():
                 s.valueChanged.connect(self.update_mm_labels)
             else:
-                s.valueChanged.connect(lambda v, l=lbl: l.setText(f"{l.text().split(':')[0]}: {v}°"))
+                s.valueChanged.connect(self.update_deg_labels)
 
             col = 0 if "Traslación" in lbl.text() else 2
             transform_layout.addWidget(lbl, row, col)
@@ -219,11 +219,20 @@ class Corregistro3D(QWidget):
 
     def update_mm_labels(self):
         tx = self.slider_tx.value() * self.spacing_mm[0]
-        ty = self.slider_ty.value() * self.spacing_mm[1]
+        ty = - self.slider_ty.value() * self.spacing_mm[1]
         tz = self.slider_tz.value() * self.spacing_mm[2]
-        self.tx_label.setText(f"Traslación X: {tx:.1f} mm")
-        self.ty_label.setText(f"Traslación Y: {ty:.1f} mm")
-        self.tz_label.setText(f"Traslación Z: {tz:.1f} mm")
+        self.tx_label.setText(f"Traslación LR: {tx:.1f} mm")
+        self.ty_label.setText(f"Traslación PA: {ty:.1f} mm")
+        self.tz_label.setText(f"Traslación IS: {tz:.1f} mm")
+
+    def update_deg_labels(self):
+        rx = - self.slider_rx.value()
+        ry = self.slider_ry.value()
+        rz = - self.slider_rz.value()
+
+        self.rx_label.setText(f"Rotación Z: {rx}°")
+        self.ry_label.setText(f"Rotación Y: {ry}°")
+        self.rz_label.setText(f"Rotación Z: {rz}°")
 
     def style_slider_handle(self, slider, handle_size=30, groove_height=8):
         # Calcula el margen superior/ inferior para centrar el handle
@@ -287,20 +296,23 @@ class Corregistro3D(QWidget):
 
     # ——— Corte de slices ———
     def set_slice_index(self, axis, v):
-        if axis=='axial':     self.idx_axial    = v
-        elif axis=='sagittal': self.idx_sagittal = v
-        else:                  self.idx_coronal   = v
+        if axis=='axial':
+            self.idx_axial = v
+        elif axis=='sagittal':
+            self.idx_sagittal = v
+        elif axis=='coronal':
+            self.idx_coronal   = v
         self.update_views()
 
     def update_sliders(self):
         if self.img1 is None: return
         # centrar siempre en la mitad
-        self.slider_axial.  setMaximum(self.img1.shape[2]-1)
-        self.slider_axial.  setValue( self.img1.shape[2]//2 )
+        self.slider_axial.setMaximum(self.img1.shape[2]-1)
+        self.slider_axial.setValue( self.img1.shape[2]//2 )
         self.slider_sagittal.setMaximum(self.img1.shape[0]-1)
         self.slider_sagittal.setValue( self.img1.shape[0]//2 )
-        self.slider_coronal. setMaximum(self.img1.shape[1]-1)
-        self.slider_coronal. setValue( self.img1.shape[1]//2 )
+        self.slider_coronal.setMaximum(self.img1.shape[1]-1)
+        self.slider_coronal.setValue( self.img1.shape[1]//2 )
 
     def sync_histogram_levels(self):
         lv = self.axial_view.ui.histogram.getLevels()
@@ -367,6 +379,7 @@ class Corregistro3D(QWidget):
 
             # Now both image 1 and 2 have the same affine matrix
             self.affine_2 = self.affine_1
+            self.spacing_mm = self.spacing_mm_1
 
         # leer parámetros embebidos
         try:
@@ -431,7 +444,7 @@ class Corregistro3D(QWidget):
         return (gray * 255).astype(np.uint8)
 
 
-    def update_views(self):
+    def update_views(self, orientation='None'):
         if self.img1 is None or self.img2 is None:
             return
 
@@ -460,9 +473,9 @@ class Corregistro3D(QWidget):
 
         #Preparamos un listado de (slice1, slice2, ImageView)
         cortes = [
-            (self.img1[:, :, z], vol2[:, :, z], self.axial_view),
-            (self.img1[x, :, :].T, vol2[x, :, :].T, self.sagittal_view),
-            (self.img1[:, y, :].T, vol2[:, y, :].T, self.coronal_view),
+            (self.img1[::-1, ::-1, z], vol2[::-1, ::-1, z], self.axial_view),
+            (self.img1[x, ::-1, ::-1].T, vol2[x, ::-1, ::-1].T, self.sagittal_view),
+            (self.img1[::-1, y, ::-1].T, vol2[::-1, y, ::-1].T, self.coronal_view),
         ]
 
         #Renderizado
