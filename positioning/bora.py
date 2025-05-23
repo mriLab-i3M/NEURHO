@@ -81,7 +81,6 @@ class Bora(paramiko.SSHClient):  # Inherit from paramiko.SSHClient.
 
             self.configure_bora()
 
-            self.move_absolute((0, 0, 0, 0, 0, 0, 0))
         except Exception as e:
             print(f"Failed to initialize Bora application: {e}")
 

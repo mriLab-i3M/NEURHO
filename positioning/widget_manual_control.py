@@ -140,7 +140,7 @@ class WidgetManualControl(QGroupBox):
         buttons_layout.addWidget(self.button_home)
 
         # Create and add the "Go Back" button
-        self.button_go_back = QPushButton("Go back")
+        self.button_go_back = QPushButton("Get Info")
         buttons_layout.addWidget(self.button_go_back)
 
         self.button_position = QPushButton("Get position")
@@ -345,6 +345,63 @@ class WidgetManualControl(QGroupBox):
             for ii in range(len(self.t_hex_labels)):
                 self.t_hex_labels[ii].setText("%.1f" % r_hex[ii])
 
+    def go_back_clicked(self):
+        def go_to_absolute():
+            # Get hexapod target coordinates
+            r_ima_target, r_hex_target = self.get_hex_position('target')
+
+            # Fix coordinate system to smc and hexapod
+            position = [r_hex_target[0] + hw.pole_length - hw.fus_home[0],
+                        r_hex_target[1] - hw.fus_home[1],
+                        r_hex_target[2] - hw.fus_home[2],
+                        + r_hex_target[4],
+                        + r_hex_target[5],
+                        - r_hex_target[3]]
+            print("Position in smc coordinates:")
+            print(position)
+
+            # Move the robot
+            if self.fus_robot.get_info(position=position, mode='absolute'):
+                # Store the positions
+                self.positions_ima.append(r_ima_target)
+                self.positions_hex.append(r_hex_target)
+
+        def go_to_relative():
+            # Get hexapod target coordinates
+            r_ima_target, r_hex_target = self.get_hex_position('target')
+
+            # Get hexapod origin coordinates
+            r_ima_origin, r_hex_origin = self.get_hex_position('origin')
+
+            # Fix coordinate system to smc and hexapod
+            position_target = [r_hex_target[0] + hw.pole_length - hw.fus_home[0],
+                               r_hex_target[1] - hw.fus_home[1],
+                               r_hex_target[2] - hw.fus_home[2],
+                               + r_hex_target[4],
+                               + r_hex_target[5],
+                               - r_hex_target[3]]
+
+            position_origin = [r_hex_origin[0] + hw.pole_length - hw.fus_home[0],
+                               r_hex_origin[1] - hw.fus_home[1],
+                               r_hex_origin[2] - hw.fus_home[2],
+                               + r_hex_origin[4],
+                               + r_hex_origin[5],
+                               - r_hex_origin[3]]
+
+            displacement = np.array(position_target) - np.array(position_origin)
+
+            # Move the robot
+            if self.fus_robot.get_info(position=displacement, mode='relative'):
+                # Store the positions
+                self.positions_ima.append(r_ima_target)
+                self.positions_hex.append(r_hex_target)
+
+        print("Movement info:")
+        if self.mode == "Absolute":
+            go_to_absolute()
+        elif self.mode == "Relative":
+            go_to_relative()
+
     def go_clicked(self):
         # thread = threading.Thread(target=self.go_to, args=())
         # thread.start()
@@ -421,18 +478,18 @@ class WidgetManualControl(QGroupBox):
 
         go_home()
 
-    def go_back_clicked(self):
-        def go_back():
-            if len(self.positions_ima) <= 1:
-                print("WARNING: No movements to revert.\n")
-                return
-
-            # Set target to last position
-            self.set_position(point='target', coordinates=self.positions_ima[-2])
-            self.go_to()
-        go_back()
-        self.positions_ima.pop()
-        self.positions_hex.pop()
+    # def go_back_clicked(self):
+    #     def go_back():
+    #         if len(self.positions_ima) <= 1:
+    #             print("WARNING: No movements to revert.\n")
+    #             return
+    #
+    #         # Set target to last position
+    #         self.set_position(point='target', coordinates=self.positions_ima[-2])
+    #         self.go_to()
+    #     go_back()
+    #     self.positions_ima.pop()
+    #     self.positions_hex.pop()
 
     def check_collision(self):
         # TODO: method to check for collisions between the pole and the shielding

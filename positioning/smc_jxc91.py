@@ -1,3 +1,4 @@
+import numpy as np
 from pycomm3 import CIPDriver, Services, INT
 import time
 import configs.hw_config as hw
@@ -22,7 +23,6 @@ class actuator_smc():
         else:
             print(f"ERROR: Cannot connect to smc {self.axis}!")
         self.reset_alarm()
-        self.home_mm()
 
     def configure_smc(self):
         if self.axis == 'x':
@@ -233,6 +233,6 @@ class smc():
 
 if __name__ == '__main__':
     device = smc()
-    device.move(position=[5, -5, 5])
+    device.move(position=[-12, 0, 0])
     device.move(position=[0, 0, 0])
     device.turn_off()

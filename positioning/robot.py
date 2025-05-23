@@ -1,3 +1,5 @@
+import copy
+
 from positioning.smc_jxc91 import actuator_smc
 from positioning.bora import Bora
 import threading
@@ -19,7 +21,12 @@ class Robot:
         threads = []
         self.smc_devices = [None] * 3  # Initialize a list to store SMC actuators
         self.bora = None  # Initialize to store the Bora hexapod
-        self.position = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        try:
+            self.position = np.array(np.load('position.npy'))
+        except:
+            self.position = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        print("Initial position:")
+        print(self.position)
 
         # Create and start a thread for each SMC initialization
         for ii, axis in enumerate(['x', 'y', 'z']):
@@ -52,6 +59,62 @@ class Robot:
         """
         self.bora = Bora()
 
+    def get_info(self, position=None, mode='relative'):
+        if mode == 'absolute':
+            # Get position
+            if position is None:
+                position = np.array([0, 0, 0, 0, 0, 0])
+            position_0 = copy.deepcopy(self.position)
+            position = position
+            smc_position_0 = position_0[:3]
+            smc_position = position[:3]
+            bora_position_0 = np.array([0, 0, 0, 0, position_0[3], position_0[4], position_0[5]])
+            bora_position = np.array([0, 0, 0, 0, position[3], position[4], position[5]])
+            dr = (smc_position - smc_position_0) / 4
+            smc_positions = []
+            bora_positions = []
+            smc_positions.append(smc_position_0 + dr)
+            smc_positions.append(smc_position_0 + 2 * dr)
+            smc_positions.append(smc_position_0 + 3 * dr)
+            smc_positions.append(smc_position)
+            dphi = (bora_position - bora_position_0) / 4
+            bora_positions.append(bora_position_0 + dphi)
+            bora_positions.append(bora_position_0 + 2 * dphi)
+            bora_positions.append(bora_position_0 + 3 * dphi)
+            bora_positions.append(bora_position)
+        elif mode == 'relative':
+            if position is None:
+                position = np.array([0, 0, 0, 0, 0, 0])
+            position_0 = copy.deepcopy(self.position)
+            position = self.position + position
+            smc_position_0 = position_0[:3]
+            smc_position = position[:3]
+            bora_position_0 = np.array([0, 0, 0, 0, position_0[3], position_0[4], position_0[5]])
+            bora_position = np.array([0, 0, 0, 0, position[3], position[4], position[5]])
+            dr = (smc_position - smc_position_0) / 4
+            smc_positions = []
+            bora_positions = []
+            smc_positions.append(smc_position_0 + dr)
+            smc_positions.append(smc_position_0 + 2 * dr)
+            smc_positions.append(smc_position_0 + 3 * dr)
+            smc_positions.append(smc_position)
+            dphi = (bora_position - bora_position_0) / 4
+            bora_positions.append(bora_position_0 + dphi)
+            bora_positions.append(bora_position_0 + 2 * dphi)
+            bora_positions.append(bora_position_0 + 3 * dphi)
+            bora_positions.append(bora_position)
+
+
+        for ii in range(4):
+            smc_position_a = smc_positions[ii]
+            bora_position_a = tuple(bora_positions[ii].tolist())
+            position_1 = [smc_position_a[0], smc_position_a[1], smc_position_a[2], bora_position_a[4], bora_position_a[5], bora_position_a[6]]
+            print("Next position:")
+            print(position_1)
+
+        return True
+
+
     def move(self, position=None, mode='relative'):
         """
         Moves the robot to the specified position by controlling the SMC actuators
@@ -71,42 +134,84 @@ class Robot:
         if mode == 'absolute':
             # Get position
             if position is None:
-                position = [0, 0, 0, 0, 0, 0]
+                position = np.array([0, 0, 0, 0, 0, 0])
+            position_0 = copy.deepcopy(self.position)
             self.position = position
+            smc_position_0 = position_0[:3]
             smc_position = position[:3]
-            bora_position = (0, 0, 0, 0, position[3], position[4], position[5])
+            bora_position_0 = np.array([0, 0, 0, 0, position_0[3], position_0[4], position_0[5]])
+            bora_position = np.array([0, 0, 0, 0, position[3], position[4], position[5]])
+            dr = (smc_position - smc_position_0) / 4
+            smc_positions = []
+            bora_positions = []
+            smc_positions.append(smc_position_0 + dr)
+            smc_positions.append(smc_position_0 + 2 * dr)
+            smc_positions.append(smc_position_0 + 3 * dr)
+            smc_positions.append(smc_position)
+            dphi = (bora_position - bora_position_0) / 4
+            bora_positions.append(bora_position_0 + dphi)
+            bora_positions.append(bora_position_0 + 2 * dphi)
+            bora_positions.append(bora_position_0 + 3 * dphi)
+            bora_positions.append(bora_position)
         elif mode == 'relative':
             if position is None:
                 position = np.array([0, 0, 0, 0, 0, 0])
+            position_0 = copy.deepcopy(self.position)
             self.position = self.position + position
+            smc_position_0 = position_0[:3]
             smc_position = self.position[:3]
-            bora_position = (0, 0, 0, 0, self.position[3], self.position[4], self.position[5])
+            bora_position_0 = np.array([0, 0, 0, 0, position_0[3], position_0[4], position_0[5]])
+            bora_position = np.array([0, 0, 0, 0, self.position[3], self.position[4], self.position[5]])
+            dr = (smc_position - smc_position_0) / 4
+            smc_positions = []
+            bora_positions = []
+            smc_positions.append(smc_position_0 + dr)
+            smc_positions.append(smc_position_0 + 2 * dr)
+            smc_positions.append(smc_position_0 + 3 * dr)
+            smc_positions.append(smc_position)
+            dphi = (bora_position - bora_position_0) / 4
+            bora_positions.append(bora_position_0 + dphi)
+            bora_positions.append(bora_position_0 + 2 * dphi)
+            bora_positions.append(bora_position_0 + 3 * dphi)
+            bora_positions.append(bora_position)
 
 
-        # Create a list of threads
-        threads = []
+        for ii in range(4):
+            smc_position_a = smc_positions[ii]
+            bora_position_a = tuple(bora_positions[ii].tolist())
+            position_1 = [smc_position_a[0], smc_position_a[1], smc_position_a[2], bora_position_a[4], bora_position_a[5], bora_position_a[6]]
+            print("Next position:")
+            print(position_1)
 
-        # Create and start a thread for each SMC actuator movement
-        for ii in range(len(self.smc_devices)):
-            thread = threading.Thread(target=self.smc_devices[ii].move_mm, args=(smc_position[ii],))
+            # Create a list of threads
+            threads = []
+
+            # Create and start a thread for each SMC actuator movement
+            for ii in range(len(self.smc_devices)):
+                thread = threading.Thread(target=self.smc_devices[ii].move_mm, args=(smc_position_a[ii],))
+                threads.append(thread)
+                thread.start()
+
+            # Create and start a thread for the Bora hexapod movement
+            thread = threading.Thread(target=self.bora.move_absolute, args=(bora_position_a,))
             threads.append(thread)
             thread.start()
 
-        # Create and start a thread for the Bora hexapod movement
-        thread = threading.Thread(target=self.bora.move_absolute, args=(bora_position,))
-        threads.append(thread)
-        thread.start()
+            # Wait for all threads to complete
+            for thread in threads:
+                thread.join()
 
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join()
+            print("Partial movement ready")
 
         print("READY!")
+        np.save('position.npy', self.position)
+        print("Final position:")
+        print(self.position)
 
         return True
 
 
 if __name__ == '__main__':
     device = Robot()
-    device.move(position=[5, -5, 5, 3, 3, 3])
-    device.move(position=[0, 0, 0, 0, 0, 0])
+    # device.move(position=np.array([-10, -10, 10, 3, 3, 3]), mode='relative')
+    device.move(position=np.array([0, 0, 0, 0, 0, 0]), mode='absolute')
