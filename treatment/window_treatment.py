@@ -41,7 +41,7 @@ Datasheet parameters:
 """
 
 # UI DEBUG: App Debugging. Connection to PicoScope avoided when UI_DEBUG = True
-UI_DEBUG = False
+UI_DEBUG = True
 
 # DATASHEET CONSTANTS
 VPEAKMAX = 2.0
@@ -87,10 +87,28 @@ class MyApp(QWidget):
         self.N_cycles = 20          # Number of cycles
         self.PRP_time = 0.005       # PRP time in seconds. Inverse of pulse-repetition frequency (PRF). PRP = 1/PRF
         self.N_bursts = 100         # Number of singal bursts
+        self.protocol = 0           # Number of protocol
 
         # Set the window title and size
         self.setWindowTitle('Signal generator UI')
         self.setGeometry(300, 300, 1400, 600) # 300, 300, 500, 500
+
+        # PROTOCOLS
+        # Create a label to display wave types
+        self.select_protocol_label = QLabel('Protocol:', self)
+        # Create a Dropdown menu
+        self.select_protocol_box = QComboBox(self)
+        self.select_protocol_box.addItem('0: No protocol')  # Add options to the combo box
+        self.select_protocol_box.addItem('1: Safety')
+        self.select_protocol_box.addItem('2: Neuromodulation')
+        self.select_protocol_box.addItem('3: BBBO')
+        # Connect the selection change event to a method
+        self.select_protocol_box.currentIndexChanged.connect(self.protocol_changed)
+        # Layout
+        selectprotocol_layout = QHBoxLayout()
+        selectprotocol_layout.addWidget(self.select_protocol_label)
+        selectprotocol_layout.addWidget(self.select_protocol_box)
+
 
         # WAVE TYPE
         # Create a label to display wave types
@@ -216,6 +234,7 @@ class MyApp(QWidget):
 
         # Create a vertical layout
         self.param_layout = QVBoxLayout()
+        self.param_layout.addLayout(selectprotocol_layout)
         self.param_layout.addLayout(selectwave_layout)
         self.param_layout.addLayout(vpeak_layout)
         self.param_layout.addLayout(freq_layout)
@@ -272,6 +291,53 @@ class MyApp(QWidget):
         self.param_layout.addWidget(self.console)
 
     # GUI functions
+    # PROTOCOL
+    def protocol_changed(self):
+        selected_option = self.select_protocol_box.currentText()
+        self.protocol = int(selected_option.split(':')[0])
+        if self.protocol > 0:
+            # Solve dependencies
+            self.freq_box.setValue(1000000)
+            self.ncycles_box.setValue(1)
+            self.prptime_box.setValue(10000)
+
+        if self.protocol == 1:  # Safety
+            self.wave_type = 0 # Sine
+            self.V_pk = 1.0 # Peak voltage in V
+            self.frequency = 500000 # Hz
+            self.V_offset = 0 # offset voltage in V
+            self.N_cycles = 10000 # Number of cycles
+            self.PRP_time = 0.2 # PRP time in seconds
+            self.N_bursts = 400 # Number of bursts
+
+        elif self.protocol == 2:   # Neuromodulation
+            self.wave_type = 0 # Sine
+            self.V_pk = 1.0 # Peak voltage in V
+            self.frequency = 500000 # Hz
+            self.V_offset = 0 # offset voltage in V
+            self.N_cycles = 180 # Number of cycles
+            self.PRP_time = 0.001 # PRP time in seconds
+            self.N_bursts = 50000 # Number of bursts
+
+        elif self.protocol == 3:   # BBBO
+            self.wave_type = 0 # Sine
+            self.V_pk = 1.0 # Peak voltage in V
+            self.frequency = 250000
+            self.V_offset = 0 # offset voltage in V
+            self.N_cycles = 2500 # Number of cycles
+            self.PRP_time = 0.5 # PRP time in seconds
+            self.N_bursts = 240 # Number of bursts
+
+        # Update box values
+        self.vpeak_box.setValue(self.V_pk)
+        self.freq_box.setValue(self.frequency)
+        self.voff_box.setValue(self.V_offset)
+        self.ncycles_box.setValue(self.N_cycles)
+        self.prptime_box.setValue(self.PRP_time)
+        self.nbursts_box.setValue(self.N_bursts)
+
+
+
     def wavetype_changed(self):
         # Get the selected text from the combo box
         selected_option = self.select_wave_combo_box.currentText()
