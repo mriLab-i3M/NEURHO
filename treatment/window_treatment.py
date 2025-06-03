@@ -41,7 +41,7 @@ Datasheet parameters:
 """
 
 # UI DEBUG: App Debugging. Connection to PicoScope avoided when UI_DEBUG = True
-UI_DEBUG = True
+UI_DEBUG = False
 
 # DATASHEET CONSTANTS
 VPEAKMAX = 2.0
@@ -303,7 +303,7 @@ class MyApp(QWidget):
 
         if self.protocol == 1:  # Safety
             self.wave_type = 0 # Sine
-            self.V_pk = 1.0 # Peak voltage in V
+            self.V_pk = 0.07825 # Peak voltage in V. 0.0783 V
             self.frequency = 500000 # Hz
             self.V_offset = 0 # offset voltage in V
             self.N_cycles = 10000 # Number of cycles
@@ -312,7 +312,7 @@ class MyApp(QWidget):
 
         elif self.protocol == 2:   # Neuromodulation
             self.wave_type = 0 # Sine
-            self.V_pk = 1.0 # Peak voltage in V
+            self.V_pk = 0.12275 # Peak voltage in V. 0.1227 V
             self.frequency = 500000 # Hz
             self.V_offset = 0 # offset voltage in V
             self.N_cycles = 180 # Number of cycles
@@ -321,7 +321,7 @@ class MyApp(QWidget):
 
         elif self.protocol == 3:   # BBBO
             self.wave_type = 0 # Sine
-            self.V_pk = 1.0 # Peak voltage in V
+            self.V_pk = 0.06 # Peak voltage in V. 0.0599 V
             self.frequency = 250000
             self.V_offset = 0 # offset voltage in V
             self.N_cycles = 2500 # Number of cycles
@@ -329,6 +329,7 @@ class MyApp(QWidget):
             self.N_bursts = 240 # Number of bursts
 
         # Update box values
+        self.select_wave_combo_box.setCurrentIndex(self.wave_type)
         self.vpeak_box.setValue(self.V_pk)
         self.freq_box.setValue(self.frequency)
         self.voff_box.setValue(self.V_offset)
