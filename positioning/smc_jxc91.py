@@ -23,6 +23,7 @@ class actuator_smc():
         else:
             print(f"ERROR: Cannot connect to smc {self.axis}!")
         self.reset_alarm()
+        #self.home_mm()
 
     def configure_smc(self):
         if self.axis == 'x':

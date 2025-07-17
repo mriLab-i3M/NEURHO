@@ -81,6 +81,7 @@ class Bora(paramiko.SSHClient):  # Inherit from paramiko.SSHClient.
 
             self.configure_bora()
 
+            #self.move_absolute((0, 0, 0, 0, 0, 0, 0))
         except Exception as e:
             print(f"Failed to initialize Bora application: {e}")
 
@@ -224,5 +225,5 @@ if __name__ == "__main__":
     from positioning.smc_jxc91 import smc
     # Example usage of the Bora class
     hexapod = Bora()
-    hexapod.move_absolute((0, 0, 0, 0, 5, 5, 5))  # Move to the specified position
+    hexapod.move_absolute((0, 0, 0, 0, 1, 1, 1))  # Move to the specified position
     hexapod.move_absolute((0, 0, 0, 0, 0, 0, 0))

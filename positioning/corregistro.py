@@ -232,7 +232,7 @@ class Corregistro3D(QWidget):
 
         self.rx_label.setText(f"Rotación Z: {rx}°")
         self.ry_label.setText(f"Rotación Y: {ry}°")
-        self.rz_label.setText(f"Rotación X: {rz}°")
+        self.rz_label.setText(f"Rotación Z: {rz}°")
 
     def style_slider_handle(self, slider, handle_size=30, groove_height=8):
         # Calcula el margen superior/ inferior para centrar el handle
