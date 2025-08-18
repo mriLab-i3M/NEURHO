@@ -81,7 +81,6 @@ class Bora(paramiko.SSHClient):  # Inherit from paramiko.SSHClient.
 
             self.configure_bora()
 
-            #self.move_absolute((0, 0, 0, 0, 0, 0, 0))
         except Exception as e:
             print(f"Failed to initialize Bora application: {e}")
 
@@ -99,6 +98,16 @@ class Bora(paramiko.SSHClient):  # Inherit from paramiko.SSHClient.
             print("Configuring Bora...")
             self.send_command('c_cmd=C_CLEARERROR')
             self.send_command('c_cmd=C_CONTROLON')
+            self.clean_outputs()
+            print("READY: Bora application is ready.")
+        except Exception as e:
+            print(f"Configuration error: {e}")
+
+    def do_home(self):
+        try:
+            print("Executing HOME...")
+            self.send_command('c_cmd=C_HOME')
+            self.send_command('c_cmd=C_CLEARERROR')
             self.clean_outputs()
             print("READY: Bora application is ready.")
         except Exception as e:
@@ -225,5 +234,6 @@ if __name__ == "__main__":
     from positioning.smc_jxc91 import smc
     # Example usage of the Bora class
     hexapod = Bora()
-    hexapod.move_absolute((0, 0, 0, 0, 1, 1, 1))  # Move to the specified position
+    # hexapod.do_home()
+    hexapod.move_absolute((0, 0, 0, 0, 5, 5, 5))  # Move to the specified position
     hexapod.move_absolute((0, 0, 0, 0, 0, 0, 0))
